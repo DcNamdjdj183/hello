@@ -507,3 +507,29 @@ struct CyberGridBackground: View {
         .ignoresSafeArea()
     }
 }
+
+
+struct AnimatedHyperBackdrop: View {
+    @State private var animate = false
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.ignoresSafeArea()
+                Circle()
+                    .fill(Color.cyan.opacity(0.12))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 70)
+                    .offset(x: animate ? 120 : -120, y: -proxy.size.height * 0.23)
+                Circle()
+                    .fill(Color.purple.opacity(0.08))
+                    .frame(width: 260, height: 260)
+                    .blur(radius: 80)
+                    .offset(x: animate ? -100 : 100, y: proxy.size.height * 0.22)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) { animate = true }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
