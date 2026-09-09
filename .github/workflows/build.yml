@@ -19,10 +19,14 @@ jobs:
         with: { xcode-version: latest-stable }
       
       - name: Build Unsigned IPA (No .p12 required)
-        run: ./build_unsigned.sh
+        run: |
+          chmod +x ./build_unsigned.sh
+          ./build_unsigned.sh
       
       - name: Prepare eSign ready IPA
-        run: ./build_esign_ready_ipa.sh build/HYper-Regedit-Key-Enabled-unsigned.ipa
+        run: |
+          chmod +x ./build_esign_ready_ipa.sh
+          ./build_esign_ready_ipa.sh build/HYper-Regedit-Key-Enabled-unsigned.ipa
       
       - name: Upload Unsigned IPA Artifact
         uses: actions/upload-artifact@v4
