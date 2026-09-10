@@ -11,13 +11,9 @@ struct ContentView: View {
     @State private var patchOperationBusy = false
     @State private var patchMessage = "Ready to inject"
     
-    @State private var aimDragEnabled = false
-    @State private var aimNeckEnabled = false
-    @State private var hspeitoffEnabled = false
-    @State private var hyperBalamagicaEnabled = false
-    @State private var aimBodyPackageEnabled = false
-    @State private var aimChestPackageEnabled = false
-    @State private var magicEnabled = false
+    @State private var aimBody90Enabled = false
+    @State private var aimlockModeEnabled = false
+    @State private var aimneckEnabled = false
     
     @State private var currentTab = 0
 
@@ -88,19 +84,11 @@ struct ContentView: View {
                             .padding(.horizontal, 4)
                             
                             VStack(spacing: 0) {
-                                PremiumToggleRow(name: "Aim Drag", pkg: "OGIOS File (6).3105", isOn: $aimDragEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (6).3105", state: $aimDragEnabled) }
+                                PremiumToggleRow(name: "AIM BODY 90%", pkg: "AIM BODY 90%.3105", isOn: $aimBody90Enabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIM BODY 90%.3105", state: $aimBody90Enabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "Aim Neck", pkg: "OGIOS File (7).3105", isOn: $aimNeckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (7).3105", state: $aimNeckEnabled) }
+                                PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCK MODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMLOCK MODE.3105", state: $aimlockModeEnabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "Antenna", pkg: "OGIOS File (8).3105", isOn: $hspeitoffEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (8).3105", state: $hspeitoffEnabled) }
-                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "144 FPS", pkg: "OGIOS File (10).3105", isOn: $hyperBalamagicaEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (10).3105", state: $hyperBalamagicaEnabled) }
-                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "Aim Body", pkg: "OGIOS File (12).3105", isOn: $aimBodyPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (12).3105", state: $aimBodyPackageEnabled) }
-                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "Aim Chest", pkg: "OGIOS File (2).3105", isOn: $aimChestPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (2).3105", state: $aimChestPackageEnabled) }
-                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "Magic", pkg: "OGIOS File (14).3105", isOn: $magicEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (14).3105", state: $magicEnabled) }
+                                PremiumToggleRow(name: "AIMNECK", pkg: "AIMNECK.3105", isOn: $aimneckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMNECK.3105", state: $aimneckEnabled) }
                             }
                             .background(Color.black.opacity(0.3))
                             .background(.ultraThinMaterial)
@@ -134,13 +122,9 @@ struct ContentView: View {
     }
 
     private func syncPatchStates() {
-        aimDragEnabled = isPatchActive("OGIOS File (6).3105")
-        aimNeckEnabled = isPatchActive("OGIOS File (7).3105")
-        hspeitoffEnabled = isPatchActive("OGIOS File (8).3105")
-        hyperBalamagicaEnabled = isPatchActive("OGIOS File (10).3105")
-        aimBodyPackageEnabled = isPatchActive("OGIOS File (12).3105")
-        aimChestPackageEnabled = isPatchActive("OGIOS File (2).3105")
-        magicEnabled = isPatchActive("OGIOS File (14).3105")
+        aimBody90Enabled = isPatchActive("AIM BODY 90%.3105")
+        aimlockModeEnabled = isPatchActive("AIMLOCK MODE.3105")
+        aimneckEnabled = isPatchActive("AIMNECK.3105")
     }
 
     private func isPatchActive(_ packageFilename: String) -> Bool {
@@ -150,13 +134,9 @@ struct ContentView: View {
 
     private func setPatchState(for packageFilename: String, enabled: Bool) {
         switch packageFilename {
-        case "OGIOS File (6).3105": aimDragEnabled = enabled
-        case "OGIOS File (7).3105": aimNeckEnabled = enabled
-        case "OGIOS File (8).3105": hspeitoffEnabled = enabled
-        case "OGIOS File (10).3105": hyperBalamagicaEnabled = enabled
-        case "OGIOS File (12).3105": aimBodyPackageEnabled = enabled
-        case "OGIOS File (2).3105": aimChestPackageEnabled = enabled
-        case "OGIOS File (14).3105": magicEnabled = enabled
+        case "AIM BODY 90%.3105": aimBody90Enabled = enabled
+        case "AIMLOCK MODE.3105": aimlockModeEnabled = enabled
+        case "AIMNECK.3105": aimneckEnabled = enabled
         default: break
         }
     }
@@ -374,7 +354,7 @@ struct PremiumToggleRow: View {
                 Text(name)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(isOn ? .white : .gray.opacity(0.9))
-                Text(pkg)
+                Text(pkg.replacingOccurrences(of: ".3105", with: ""))
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundColor(.gray.opacity(0.7))
             }
