@@ -42,6 +42,17 @@ struct ContentView: View {
                         ProgressView().tint(.purple)
                             .padding(.trailing, 10)
                     }
+                    Button(action: {
+                        licenseManager.deactivate()
+                    }) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                            .padding(14)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    }
                     Button(action: { showSettings = true }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 20))
@@ -86,11 +97,11 @@ struct ContentView: View {
                             .padding(.horizontal, 4)
                             
                             VStack(spacing: 0) {
-                                PremiumToggleRow(name: "AIM BODY 90%", pkg: "AIMBODY90.3105", isOn: $aimBody90Enabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMBODY90.3105", state: $aimBody90Enabled) }
+                                PremiumToggleRow(name: "AIM BODY 90%", pkg: "AIMBODY90.3105", isOn: $aimBody90Enabled, isBusy: patchOperationBusy) { togglePatch(id: "C19CBA7B-C108-4752-9221-4950D1B9E096", name: "AIM BODY 90%", state: $aimBody90Enabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCKMODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMLOCKMODE.3105", state: $aimlockModeEnabled) }
+                                PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCKMODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "AIMNECK", pkg: "AIMNECK.3105", isOn: $aimneckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMNECK.3105", state: $aimneckEnabled) }
+                                PremiumToggleRow(name: "AIMNECK", pkg: "AIMNECK.3105", isOn: $aimneckEnabled, isBusy: patchOperationBusy) { togglePatch(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA", name: "AIMNECK", state: $aimneckEnabled) }
                             }
                             .background(Color.black.opacity(0.3))
                             .background(.ultraThinMaterial)
@@ -124,21 +135,21 @@ struct ContentView: View {
     }
 
     private func syncPatchStates() {
-        aimBody90Enabled = isPatchActive("AIMBODY90.3105")
-        aimlockModeEnabled = isPatchActive("AIMLOCKMODE.3105")
-        aimneckEnabled = isPatchActive("AIMNECK.3105")
+        aimBody90Enabled = isPatchActive(id: "C19CBA7B-C108-4752-9221-4950D1B9E096")
+        aimlockModeEnabled = isPatchActive(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154")
+        aimneckEnabled = isPatchActive(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA")
     }
 
-    private func isPatchActive(_ packageFilename: String) -> Bool {
-        patchStore.items.first(where: { $0.packageURL.lastPathComponent.caseInsensitiveCompare(packageFilename) == .orderedSame })
+    private func isPatchActive(id: String) -> Bool {
+        patchStore.items.first(where: { $0.id.uuidString.caseInsensitiveCompare(id) == .orderedSame })
             .flatMap { DevicePatchService.latestReceipt(projectID: $0.id) } != nil
     }
 
-    private func setPatchState(for packageFilename: String, enabled: Bool) {
-        switch packageFilename {
-        case "AIMBODY90.3105": aimBody90Enabled = enabled
-        case "AIMLOCKMODE.3105": aimlockModeEnabled = enabled
-        case "AIMNECK.3105": aimneckEnabled = enabled
+    private func setPatchState(for id: String, enabled: Bool) {
+        switch id.uppercased() {
+        case "C19CBA7B-C108-4752-9221-4950D1B9E096": aimBody90Enabled = enabled
+        case "161B8454-5C89-4BF2-93D9-B60ECDF2E154": aimlockModeEnabled = enabled
+        case "306FC9CF-433A-4318-9FF3-26C07BFBD0FA": aimneckEnabled = enabled
         default: break
         }
     }
@@ -147,17 +158,17 @@ struct ContentView: View {
         case applied, restored, unavailable(String)
     }
 
-    private func togglePatch(pkg: String, state: Binding<Bool>) {
+    private func togglePatch(id: String, name: String, state: Binding<Bool>) {
         guard !patchOperationBusy else { return }
-        guard let item = patchStore.items.first(where: { $0.packageURL.lastPathComponent.caseInsensitiveCompare(pkg) == .orderedSame }) else {
+        guard let item = patchStore.items.first(where: { $0.id.uuidString.caseInsensitiveCompare(id) == .orderedSame }) else {
             patchMessage = "Error: Module not found"
-            log("patch: package not found: \(pkg)")
+            log("patch: package not found: \(name)")
             return
         }
 
         let wasEnabled = state.wrappedValue
         patchOperationBusy = true
-        patchMessage = "Injecting \(pkg.replacingOccurrences(of: ".3105", with: ""))..."
+        patchMessage = "Injecting \(name)..."
         let project = item.project
         let projectID = item.id
 
@@ -168,7 +179,7 @@ struct ContentView: View {
                     guard let receipt = DevicePatchService.latestReceipt(projectID: projectID) else {
                         result = .unavailable("No active receipt")
                         DispatchQueue.main.async {
-                            self.setPatchState(for: pkg, enabled: false)
+                            self.setPatchState(for: id, enabled: false)
                             self.patchMessage = "Restored"
                             self.patchOperationBusy = false
                         }
@@ -196,11 +207,11 @@ struct ContentView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .applied:
-                    self.setPatchState(for: pkg, enabled: true)
+                    self.setPatchState(for: id, enabled: true)
                     self.patchMessage = "Module Injected!"
                     PatchAudioFeedback.bypassActivated()
                 case .restored:
-                    self.setPatchState(for: pkg, enabled: false)
+                    self.setPatchState(for: id, enabled: false)
                     self.patchMessage = "Module Restored!"
                     PatchAudioFeedback.originalRestored()
                 case .unavailable(let message):
