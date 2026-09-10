@@ -9,7 +9,7 @@ struct ContentView: View {
     @State private var showCleaner = false
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
-    @State private var patchMessage = "SYSTEM ONLINE // AWAITING COMMAND"
+    @State private var patchMessage = "Ready to inject"
     
     @State private var aimDragEnabled = false
     @State private var aimNeckEnabled = false
@@ -23,65 +23,113 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            CyberGridBackground()
+            PremiumBackground()
             
             VStack(spacing: 0) {
-                CyberTopBar(showSettings: $showSettings)
+                // Header
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("OGIOS")
+                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(colors: [.white, Color.purple.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                        Text(patchMessage)
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(patchOperationBusy ? .yellow : .gray)
+                            .lineLimit(1)
+                            .animation(.easeInOut, value: patchMessage)
+                    }
+                    Spacer()
+                    if patchOperationBusy {
+                        ProgressView().tint(.purple)
+                            .padding(.trailing, 10)
+                    }
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                            .padding(14)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
                 
                 TabView(selection: $currentTab) {
+                    // TAB 0: DASHBOARD
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 24) {
-                            SystemStatusPanel(appState: appState)
-                            LaunchTerminalPanel(showCleaner: $showCleaner, onLaunch: openGame)
+                        VStack(spacing: 20) {
+                            StatusCard(appState: appState)
+                            LaunchCard(showCleaner: $showCleaner, onLaunch: openGame)
                         }
-                        .padding(20)
-                        .padding(.bottom, 80)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 100)
+                    }
+                    .tabItem {
+                        Image(systemName: "house.fill")
+                        Text("Home")
                     }
                     .tag(0)
                     
+                    // TAB 1: MODULES
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 16) {
                             HStack {
-                                Text("OVERRIDE MODULES")
-                                    .font(.custom("CourierNewPS-BoldMT", size: 18))
-                                    .foregroundColor(.cyan)
+                                Text("Active Modules")
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
                                 Spacer()
                             }
+                            .padding(.horizontal, 4)
                             
-                            VStack(spacing: 12) {
-                                CyberPatchRow(name: "AIM DRAG", pkg: "OGIOS File (6).3105", isOn: $aimDragEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (6).3105", state: $aimDragEnabled) }
-                                CyberPatchRow(name: "AIM NECK", pkg: "OGIOS File (7).3105", isOn: $aimNeckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (7).3105", state: $aimNeckEnabled) }
-                                CyberPatchRow(name: "ANTENNA", pkg: "OGIOS File (8).3105", isOn: $hspeitoffEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (8).3105", state: $hspeitoffEnabled) }
-                                CyberPatchRow(name: "144 FPS", pkg: "OGIOS File (10).3105", isOn: $hyperBalamagicaEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (10).3105", state: $hyperBalamagicaEnabled) }
-                                CyberPatchRow(name: "AIM BODY", pkg: "OGIOS File (12).3105", isOn: $aimBodyPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (12).3105", state: $aimBodyPackageEnabled) }
-                                CyberPatchRow(name: "AIM CHEST", pkg: "OGIOS File (2).3105", isOn: $aimChestPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (2).3105", state: $aimChestPackageEnabled) }
-                                CyberPatchRow(name: "MAGIC", pkg: "OGIOS File (14).3105", isOn: $magicEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (14).3105", state: $magicEnabled) }
+                            VStack(spacing: 0) {
+                                PremiumToggleRow(name: "Aim Drag", pkg: "OGIOS File (6).3105", isOn: $aimDragEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (6).3105", state: $aimDragEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "Aim Neck", pkg: "OGIOS File (7).3105", isOn: $aimNeckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (7).3105", state: $aimNeckEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "Antenna", pkg: "OGIOS File (8).3105", isOn: $hspeitoffEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (8).3105", state: $hspeitoffEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "144 FPS", pkg: "OGIOS File (10).3105", isOn: $hyperBalamagicaEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (10).3105", state: $hyperBalamagicaEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "Aim Body", pkg: "OGIOS File (12).3105", isOn: $aimBodyPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (12).3105", state: $aimBodyPackageEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "Aim Chest", pkg: "OGIOS File (2).3105", isOn: $aimChestPackageEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (2).3105", state: $aimChestPackageEnabled) }
+                                Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                PremiumToggleRow(name: "Magic", pkg: "OGIOS File (14).3105", isOn: $magicEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "OGIOS File (14).3105", state: $magicEnabled) }
                             }
+                            .background(Color.black.opacity(0.3))
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
                         }
-                        .padding(20)
-                        .padding(.bottom, 80)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
+                        .padding(.bottom, 100)
+                    }
+                    .tabItem {
+                        Image(systemName: "switch.2")
+                        Text("Modules")
                     }
                     .tag(1)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-            }
-            
-            VStack {
-                Spacer()
-                CyberBottomBar(currentTab: $currentTab, message: patchMessage, isBusy: patchOperationBusy)
             }
         }
         .preferredColorScheme(.dark)
+        .tint(.purple)
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showCleaner) { CleanerView() }
-        .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in
-            PatchUnlockPrompt(store: patchStore)
-        }
+        .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in PatchUnlockPrompt(store: patchStore) }
         .onAppear { syncPatchStates() }
         .onChange(of: scenePhase) { phase in
             guard phase == .active, !patchOperationBusy else { return }
             syncPatchStates()
-            patchMessage = "SYSTEM ONLINE // AWAITING COMMAND"
+            patchMessage = "Ready"
         }
     }
 
@@ -120,14 +168,14 @@ struct ContentView: View {
     private func togglePatch(pkg: String, state: Binding<Bool>) {
         guard !patchOperationBusy else { return }
         guard let item = patchStore.items.first(where: { $0.packageURL.lastPathComponent.caseInsensitiveCompare(pkg) == .orderedSame }) else {
-            patchMessage = "ERROR // PKG_NOT_FOUND"
+            patchMessage = "Error: Module not found"
             log("patch: package not found: \(pkg)")
             return
         }
 
         let wasEnabled = state.wrappedValue
         patchOperationBusy = true
-        patchMessage = "INJECTING // \(pkg)"
+        patchMessage = "Injecting \(pkg)..."
         let project = item.project
         let projectID = item.id
 
@@ -136,10 +184,10 @@ struct ContentView: View {
             do {
                 if wasEnabled {
                     guard let receipt = DevicePatchService.latestReceipt(projectID: projectID) else {
-                        result = .unavailable("ERR // NO_ACTIVE_RECEIPT")
+                        result = .unavailable("No active receipt")
                         DispatchQueue.main.async {
                             self.setPatchState(for: pkg, enabled: false)
-                            self.patchMessage = "RESTORED // NO ACTIVE PATCH"
+                            self.patchMessage = "Restored"
                             self.patchOperationBusy = false
                         }
                         return
@@ -148,10 +196,10 @@ struct ContentView: View {
                     result = .restored
                 } else {
                     guard let project else {
-                        result = .unavailable("ERR // UNLOCK_REQUIRED")
+                        result = .unavailable("Unlock Required")
                         DispatchQueue.main.async {
                             self.patchStore.requestUnlock(for: item)
-                            self.patchMessage = "AUTH REQ // ENTER PKG PIN"
+                            self.patchMessage = "Enter Decryption Key"
                             self.patchOperationBusy = false
                         }
                         return
@@ -160,18 +208,18 @@ struct ContentView: View {
                     result = .applied
                 }
             } catch {
-                result = .unavailable("ERR // EXCEPTION: \(error.localizedDescription)")
+                result = .unavailable("Error: \(error.localizedDescription)")
             }
 
             DispatchQueue.main.async {
                 switch result {
                 case .applied:
                     self.setPatchState(for: pkg, enabled: true)
-                    self.patchMessage = "SUCCESS // \(pkg) INJECTED"
+                    self.patchMessage = "Module Injected!"
                     PatchAudioFeedback.bypassActivated()
                 case .restored:
                     self.setPatchState(for: pkg, enabled: false)
-                    self.patchMessage = "SUCCESS // \(pkg) RESTORED"
+                    self.patchMessage = "Module Restored!"
                     PatchAudioFeedback.originalRestored()
                 case .unavailable(let message):
                     self.patchMessage = message
@@ -187,138 +235,124 @@ struct ContentView: View {
     }
 }
 
-// MARK: - UI Components
+// MARK: - Beautiful UI Components
 
-struct CyberTopBar: View {
-    @Binding var showSettings: Bool
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: -2) {
-                Text("O.G.I.O.S")
-                    .font(.custom("CourierNewPS-BoldMT", size: 28))
-                    .foregroundColor(.cyan)
-                    .shadow(color: .cyan, radius: 5)
-                Text("QUANTUM INTERFACE V3")
-                    .font(.custom("Courier", size: 10))
-                    .foregroundColor(.gray)
-            }
-            Spacer()
-            Button(action: { showSettings = true }) {
-                Image(systemName: "hexagon.fill")
-                    .resizable()
-                    .frame(width: 30, height: 30)
-                    .foregroundColor(.cyan)
-                    .overlay(Image(systemName: "slider.horizontal.3").foregroundColor(.black).font(.system(size: 14, weight: .bold)))
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-        .background(Color.black.opacity(0.8))
-        .overlay(Rectangle().frame(height: 1).foregroundColor(.cyan), alignment: .bottom)
-    }
-}
-
-struct SystemStatusPanel: View {
+struct StatusCard: View {
     @ObservedObject var appState: AppState
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Image(systemName: "cpu")
-                    .foregroundColor(.cyan)
-                Text("SYSTEM DIAGNOSTICS")
-                    .font(.custom("CourierNewPS-BoldMT", size: 14))
-                    .foregroundColor(.cyan)
-            }
-            
-            Divider().background(Color.cyan.opacity(0.5))
-            
-            HStack {
-                Text("OS VERSION")
-                    .font(.custom("Courier", size: 12))
-                    .foregroundColor(.gray)
-                Spacer()
-                Text(AppInfo.osVersion)
-                    .font(.custom("CourierNewPS-BoldMT", size: 14))
+                Image(systemName: "iphone.gen3")
+                    .font(.system(size: 22))
+                    .foregroundColor(.purple)
+                Text("Device Identity")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
+                Spacer()
             }
             
-            HStack {
-                Text("HARDWARE")
-                    .font(.custom("Courier", size: 12))
-                    .foregroundColor(.gray)
-                Spacer()
-                Text(AppInfo.displayMachineName)
-                    .font(.custom("CourierNewPS-BoldMT", size: 14))
-                    .foregroundColor(.white)
-            }
-            
-            HStack {
-                Text("KERNEL STATUS")
-                    .font(.custom("Courier", size: 12))
-                    .foregroundColor(.gray)
-                Spacer()
-                Text(appState.isSupported ? "SECURE / COMPATIBLE" : "UNSUPPORTED")
-                    .font(.custom("CourierNewPS-BoldMT", size: 14))
-                    .foregroundColor(appState.isSupported ? .green : .red)
+            VStack(spacing: 14) {
+                InfoRow(title: "OS Version", value: AppInfo.osVersion)
+                InfoRow(title: "Hardware", value: AppInfo.displayMachineName)
+                HStack {
+                    Text("Kernel Support")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.gray)
+                    Spacer()
+                    Text(appState.isSupported ? "Supported" : "Unsupported")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(appState.isSupported ? .green : .red)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(appState.isSupported ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
+                        .clipShape(Capsule())
+                }
             }
         }
-        .padding(16)
-        .background(Color.black.opacity(0.6))
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.cyan, lineWidth: 1))
+        .padding(24)
+        .background(Color.black.opacity(0.3))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
     }
 }
 
-struct LaunchTerminalPanel: View {
+struct InfoRow: View {
+    let title: String
+    let value: String
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(.gray)
+            Spacer()
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+        }
+    }
+}
+
+struct LaunchCard: View {
     @Binding var showCleaner: Bool
     var onLaunch: (String) -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Image(systemName: "terminal")
-                    .foregroundColor(.cyan)
-                Text("EXECUTION TERMINAL")
-                    .font(.custom("CourierNewPS-BoldMT", size: 14))
-                    .foregroundColor(.cyan)
+                Image(systemName: "gamecontroller.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.purple)
+                Text("Quick Launch")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
             }
-            
-            Divider().background(Color.cyan.opacity(0.5))
             
             Button(action: { onLaunch("freefireth") }) {
                 HStack {
-                    Text("> EXECUTE: FREE FIRE NORMAL")
-                        .font(.custom("CourierNewPS-BoldMT", size: 14))
-                        .foregroundColor(.black)
+                    Image(systemName: "play.circle.fill")
+                        .font(.title2)
+                    Text("Launch Free Fire Normal")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                     Spacer()
-                    Image(systemName: "play.fill").foregroundColor(.black)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
                 }
+                .foregroundColor(.white)
                 .padding()
-                .background(Color.cyan)
-                .cornerRadius(4)
+                .background(LinearGradient(colors: [.purple, .indigo], startPoint: .leading, endPoint: .trailing))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .purple.opacity(0.3), radius: 8, y: 4)
             }
             
             Button(action: { showCleaner = true }) {
                 HStack {
-                    Text("> RUN: CACHE_CLEANER.EXE")
-                        .font(.custom("CourierNewPS-BoldMT", size: 14))
-                        .foregroundColor(.cyan)
+                    Image(systemName: "trash.circle.fill")
+                        .font(.title2)
+                    Text("Clean Cache & Logs")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                     Spacer()
-                    Image(systemName: "trash").foregroundColor(.cyan)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
                 }
+                .foregroundColor(.white)
                 .padding()
-                .background(Color.clear)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.cyan, lineWidth: 1))
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
             }
         }
-        .padding(16)
-        .background(Color.black.opacity(0.6))
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.cyan, lineWidth: 1))
+        .padding(24)
+        .background(Color.black.opacity(0.3))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
     }
 }
 
-struct CyberPatchRow: View {
+struct PremiumToggleRow: View {
     let name: String
     let pkg: String
     @Binding var isOn: Bool
@@ -326,100 +360,42 @@ struct CyberPatchRow: View {
     let action: () -> Void
     
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 15) {
-                // Status Box
-                ZStack {
-                    Rectangle()
-                        .fill(isOn ? Color.cyan.opacity(0.2) : Color.black)
-                        .frame(width: 40, height: 40)
-                        .border(isOn ? Color.cyan : Color.gray, width: 1)
-                    
-                    if isOn {
-                        Image(systemName: "checkmark")
-                            .foregroundColor(.cyan)
-                            .font(.system(size: 16, weight: .bold))
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(name)
-                        .font(.custom("CourierNewPS-BoldMT", size: 16))
-                        .foregroundColor(isOn ? .cyan : .white)
-                    Text("PKG: \(pkg)")
-                        .font(.custom("Courier", size: 10))
-                        .foregroundColor(.gray)
-                }
-                
-                Spacer()
-                
-                Text(isOn ? "[ ACTIVE ]" : "[ OFFLINE ]")
-                    .font(.custom("Courier", size: 12))
-                    .foregroundColor(isOn ? .cyan : .gray)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(isOn ? Color.purple.opacity(0.2) : Color.white.opacity(0.08))
+                    .frame(width: 36, height: 36)
+                Image(systemName: isOn ? "checkmark.seal.fill" : "puzzlepiece.fill")
+                    .foregroundColor(isOn ? .purple : .gray)
+                    .font(.system(size: 16))
             }
-            .padding(12)
-            .background(Color.black.opacity(0.5))
-            .border(isOn ? Color.cyan.opacity(0.5) : Color.gray.opacity(0.3), width: 1)
-        }
-        .disabled(isBusy)
-        .opacity(isBusy ? 0.5 : 1.0)
-    }
-}
-
-struct CyberBottomBar: View {
-    @Binding var currentTab: Int
-    let message: String
-    let isBusy: Bool
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Status Ticker
-            HStack {
-                Text(message)
-                    .font(.custom("Courier", size: 11))
-                    .foregroundColor(isBusy ? .yellow : .cyan)
-                    .lineLimit(1)
-                Spacer()
-                if isBusy {
-                    ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .yellow))
-                        .scaleEffect(0.7)
-                }
-            }
-            .padding(.horizontal, 15)
-            .padding(.vertical, 8)
-            .background(Color.black)
-            .border(Color.cyan.opacity(0.5), width: 1)
             
-            // Tabs
-            HStack(spacing: 0) {
-                CyberTabButton(title: "DASHBOARD", icon: "square.grid.2x2", isSelected: currentTab == 0) { currentTab = 0 }
-                CyberTabButton(title: "MODULES", icon: "cpu", isSelected: currentTab == 1) { currentTab = 1 }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(isOn ? .white : .gray.opacity(0.9))
+                Text(pkg)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.gray.opacity(0.7))
             }
-            .background(Color.black.opacity(0.95))
+            
+            Spacer()
+            
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { _ in action() }
+            ))
+            .labelsHidden()
+            .tint(.purple)
+            .disabled(isBusy)
         }
-    }
-}
-
-struct CyberTabButton: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 20))
-                Text(title)
-                    .font(.custom("CourierNewPS-BoldMT", size: 10))
-            }
-            .foregroundColor(isSelected ? .cyan : .gray)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(isSelected ? Color.cyan.opacity(0.1) : Color.clear)
-            .overlay(Rectangle().frame(height: 2).foregroundColor(isSelected ? .cyan : .clear), alignment: .top)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isBusy { action() }
         }
+        .opacity(isBusy ? 0.6 : 1.0)
     }
 }
 
@@ -451,7 +427,7 @@ private struct PatchUnlockPrompt: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("PKG DECRYPTION KEY", text: $password)
+                    SecureField("Decryption Key", text: $password)
                         .textContentType(.password)
                         .submitLabel(.done)
                         .onSubmit(unlock)
@@ -465,14 +441,14 @@ private struct PatchUnlockPrompt: View {
                     Text("Enter key to decrypt and inject module.")
                 }
             }
-            .navigationTitle("DECRYPT MODULE")
+            .navigationTitle("Unlock Module")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("CANCEL") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("DECRYPT", action: unlock)
+                    Button("Unlock", action: unlock)
                         .disabled(password.isEmpty || store.isBusy)
                 }
             }
@@ -484,30 +460,31 @@ private struct PatchUnlockPrompt: View {
     }
 }
 
-struct CyberGridBackground: View {
+struct PremiumBackground: View {
+    @State private var animate = false
     var body: some View {
         ZStack {
             Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-            GeometryReader { proxy in
-                Canvas { context, size in
-                    var path = Path()
-                    let spacing: CGFloat = 30
-                    for x in stride(from: CGFloat(0), through: size.width, by: spacing) {
-                        path.move(to: CGPoint(x: x, y: 0))
-                        path.addLine(to: CGPoint(x: x, y: size.height))
-                    }
-                    for y in stride(from: CGFloat(0), through: size.height, by: spacing) {
-                        path.move(to: CGPoint(x: 0, y: y))
-                        path.addLine(to: CGPoint(x: size.width, y: y))
-                    }
-                    context.stroke(path, with: .color(Color.cyan.opacity(0.08)), lineWidth: 1)
-                }
+            
+            Circle()
+                .fill(Color.purple.opacity(0.15))
+                .frame(width: 300, height: 300)
+                .blur(radius: 80)
+                .offset(x: animate ? 100 : -100, y: animate ? -100 : 100)
+            
+            Circle()
+                .fill(Color.indigo.opacity(0.15))
+                .frame(width: 300, height: 300)
+                .blur(radius: 80)
+                .offset(x: animate ? -100 : 100, y: animate ? 100 : -100)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
+                animate = true
             }
         }
-        .ignoresSafeArea()
     }
 }
-
 
 struct AnimatedHyperBackdrop: View {
     @State private var animate = false
