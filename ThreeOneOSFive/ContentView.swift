@@ -5,6 +5,7 @@ import AVFoundation
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var licenseManager: LicenseManager
     @State private var showSettings = false
     @State private var showCleaner = false
     @StateObject private var patchStore = PatchProjectStore()
@@ -25,7 +26,7 @@ struct ContentView: View {
                 // Header
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("OGIOS")
+                        Text("DNXTWEAKS")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundStyle(
                                 LinearGradient(colors: [.white, Color.purple.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -60,6 +61,7 @@ struct ContentView: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 20) {
                             StatusCard(appState: appState)
+                            KeyStatusCard(remainingSeconds: licenseManager.remainingSeconds)
                             LaunchCard(showCleaner: $showCleaner, onLaunch: openGame)
                         }
                         .padding(.horizontal, 20)
@@ -476,5 +478,34 @@ struct AnimatedHyperBackdrop: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+struct KeyStatusCard: View {
+    let remainingSeconds: Int
+    var body: some View {
+        HStack {
+            Image(systemName: "timer")
+                .foregroundColor(.purple)
+            Text("License Time Remaining:")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            Spacer()
+            Text(formattedTime)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(remainingSeconds < 3600 ? .red : .green)
+        }
+        .padding()
+        .background(Color.black.opacity(0.3))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+    }
+    
+    var formattedTime: String {
+        let h = remainingSeconds / 3600
+        let m = (remainingSeconds % 3600) / 60
+        let s = remainingSeconds % 60
+        return String(format: "%02d:%02d:%02d", h, m, s)
     }
 }

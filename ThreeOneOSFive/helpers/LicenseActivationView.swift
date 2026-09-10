@@ -19,7 +19,7 @@ struct LicenseActivationView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 42)
 
-                            Text("OGIOS")
+                            Text("DNXTWEAKS")
                                 .font(.system(size: 30, weight: .black, design: .rounded))
                                 .tracking(1.4)
                                 .foregroundStyle(.white)
@@ -29,7 +29,7 @@ struct LicenseActivationView: View {
                                 .foregroundStyle(.white.opacity(0.55))
                                 .padding(.top, 5)
 
-                            Text("Package: OGIOS")
+                            Text("Package: DNXTWEAKS")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundStyle(AppTheme.secondaryAccent.opacity(0.9))
                                 .padding(.top, 8)
@@ -45,7 +45,7 @@ struct LicenseActivationView: View {
                                     Spacer()
                                 }
 
-                                Text("Enter your OGIOS license key to continue")
+                                Text("Enter your DNXTWEAKS license key to continue")
                                     .font(.system(size: 13, weight: .medium, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.68))
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,6 +84,23 @@ struct LicenseActivationView: View {
                                 .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || manager.isBusy)
                                 .opacity(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.48 : 1)
 
+                                Button(action: {
+                                    if let url = URL(string: "https://getkey-dnxtweaks.pages.dev/") {
+                                        UIApplication.shared.open(url)
+                                    }
+                                }) {
+                                    HStack(spacing: 9) {
+                                        Image(systemName: "safari.fill")
+                                        Text("GET KEY")
+                                    }
+                                    .font(.system(size: 14, weight: .black, design: .rounded))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity, minHeight: 54)
+                                    .background(Color.gray.opacity(0.3), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+
                                 if let message = manager.message {
                                     Text(message)
                                         .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -95,16 +112,6 @@ struct LicenseActivationView: View {
                                         .background(Color.gray.opacity(0.20), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                                 }
 
-                                if let contactOwner = manager.contactOwner,
-                                   let contactURL = ownerURL(from: contactOwner) {
-                                    Button("Contact Owner…") {
-                                        UIApplication.shared.open(contactURL)
-                                    }
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundStyle(AppTheme.secondaryAccent)
-                                    .buttonStyle(.plain)
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                                }
                             }
                             .padding(20)
                             .background(.ultraThinMaterial.opacity(0.72), in: RoundedRectangle(cornerRadius: 25, style: .continuous))
@@ -133,16 +140,5 @@ struct LicenseActivationView: View {
     private func activate() {
         keyFocused = false
         manager.activate(key: key)
-    }
-
-    private func ownerURL(from value: String) -> URL? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
-            return URL(string: trimmed)
-        }
-        if trimmed.hasPrefix("@") {
-            return URL(string: "https://t.me/" + String(trimmed.dropFirst()))
-        }
-        return URL(string: "https://t.me/" + trimmed)
     }
 }
