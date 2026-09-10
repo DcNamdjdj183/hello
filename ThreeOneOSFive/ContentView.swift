@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var aimBody90Enabled = false
     @State private var aimlockModeEnabled = false
     @State private var aimneckEnabled = false
+    @State private var aimDragEnabled = false
+    @State private var aimHeadEnabled = false
+    @State private var aimMalformationEnabled = false
     @State private var skin1Enabled = false
     @State private var chamsBlueEnabled = false
     
@@ -117,6 +120,12 @@ struct ContentView: View {
                                     PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCKMODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
                                     Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                                     PremiumToggleRow(name: "AIMNECK", pkg: "AIMNECK.3105", isOn: $aimneckEnabled, isBusy: patchOperationBusy) { togglePatch(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA", name: "AIMNECK", state: $aimneckEnabled) }
+                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                    PremiumToggleRow(name: "AIM DRAG", pkg: "AIMDRAG.3105", isOn: $aimDragEnabled, isBusy: patchOperationBusy) { togglePatch(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F", name: "AIM DRAG", state: $aimDragEnabled) }
+                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                    PremiumToggleRow(name: "AIM HEAD", pkg: "AIMHEAD.3105", isOn: $aimHeadEnabled, isBusy: patchOperationBusy) { togglePatch(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A", name: "AIM HEAD", state: $aimHeadEnabled) }
+                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                    PremiumToggleRow(name: "AIM MALFORMATION", pkg: "AIMMALFORMATION.3105", isOn: $aimMalformationEnabled, isBusy: patchOperationBusy) { togglePatch(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2", name: "AIM MALFORMATION", state: $aimMalformationEnabled) }
                                 }
                                 .background(Color.black.opacity(0.3))
                                 .background(.ultraThinMaterial)
@@ -172,6 +181,9 @@ struct ContentView: View {
         aimBody90Enabled = isPatchActive(id: "C19CBA7B-C108-4752-9221-4950D1B9E096")
         aimlockModeEnabled = isPatchActive(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154")
         aimneckEnabled = isPatchActive(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA")
+        aimDragEnabled = isPatchActive(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F")
+        aimHeadEnabled = isPatchActive(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A")
+        aimMalformationEnabled = isPatchActive(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2")
         skin1Enabled = isPatchActive(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3")
         chamsBlueEnabled = isPatchActive(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882")
     }
@@ -186,6 +198,9 @@ struct ContentView: View {
         case "C19CBA7B-C108-4752-9221-4950D1B9E096": aimBody90Enabled = enabled
         case "161B8454-5C89-4BF2-93D9-B60ECDF2E154": aimlockModeEnabled = enabled
         case "306FC9CF-433A-4318-9FF3-26C07BFBD0FA": aimneckEnabled = enabled
+        case "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F": aimDragEnabled = enabled
+        case "C3770F2A-A799-458F-9AEE-412B31B1CA4A": aimHeadEnabled = enabled
+        case "92A3B41B-5B86-45BC-A840-482BAF4BE7E2": aimMalformationEnabled = enabled
         case "47C88561-C524-4164-9ADA-D5F578F4FDC3": skin1Enabled = enabled
         case "A677DFE5-1355-4CC8-9137-C54A5E85B882": chamsBlueEnabled = enabled
         default: break

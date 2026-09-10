@@ -12,6 +12,9 @@
 		N3105B003 /* AIMNECK.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P003; };
 		N3105B004 /* SKIN-1.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P004; };
 		N3105B005 /* CHAMS-BLUE.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P005; };
+		N3105B006 /* AIMDRAG.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P006; };
+		N3105B007 /* AIMHEAD.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P007; };
+		N3105B008 /* AIMMALFORMATION.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P008; };
 		3105A200 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A020; };
 		3105A201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A021; };
 		3105A203 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A023; };
@@ -86,6 +89,9 @@
 		N3105P003 /* AIMNECK.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMNECK.3105"; sourceTree = "<group>"; };
 		N3105P004 /* SKIN-1.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/SKIN-1.3105"; sourceTree = "<group>"; };
 		N3105P005 /* CHAMS-BLUE.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/CHAMS-BLUE.3105"; sourceTree = "<group>"; };
+		N3105P006 /* AIMDRAG.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMDRAG.3105"; sourceTree = "<group>"; };
+		N3105P007 /* AIMHEAD.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMHEAD.3105"; sourceTree = "<group>"; };
+		N3105P008 /* AIMMALFORMATION.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMMALFORMATION.3105"; sourceTree = "<group>"; };
 		3105A010 /* OGIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OGIOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		3105A021 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -379,6 +385,9 @@
 				N3105B003,
 				N3105B004,
 				N3105B005,
+				N3105B006,
+				N3105B007,
+				N3105B008,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
