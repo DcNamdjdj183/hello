@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		N3105B001 /* AIM BODY 90%.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P001; };
-		N3105B002 /* AIMLOCK MODE.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P002; };
+		N3105B001 /* AIMBODY90.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P001; };
+		N3105B002 /* AIMLOCKMODE.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P002; };
 		N3105B003 /* AIMNECK.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P003; };
 		3105A200 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A020; };
 		3105A201 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105A021; };
@@ -79,8 +79,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		N3105P001 /* AIM BODY 90%.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIM BODY 90%.3105"; sourceTree = "<group>"; };
-		N3105P002 /* AIMLOCK MODE.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMLOCK MODE.3105"; sourceTree = "<group>"; };
+		N3105P001 /* AIMBODY90.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMBODY90.3105"; sourceTree = "<group>"; };
+		N3105P002 /* AIMLOCKMODE.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMLOCKMODE.3105"; sourceTree = "<group>"; };
 		N3105P003 /* AIMNECK.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMNECK.3105"; sourceTree = "<group>"; };
 		3105A010 /* OGIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "OGIOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3105A020 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };

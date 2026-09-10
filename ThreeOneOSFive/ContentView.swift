@@ -86,9 +86,9 @@ struct ContentView: View {
                             .padding(.horizontal, 4)
                             
                             VStack(spacing: 0) {
-                                PremiumToggleRow(name: "AIM BODY 90%", pkg: "AIM BODY 90%.3105", isOn: $aimBody90Enabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIM BODY 90%.3105", state: $aimBody90Enabled) }
+                                PremiumToggleRow(name: "AIM BODY 90%", pkg: "AIMBODY90.3105", isOn: $aimBody90Enabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMBODY90.3105", state: $aimBody90Enabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCK MODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMLOCK MODE.3105", state: $aimlockModeEnabled) }
+                                PremiumToggleRow(name: "AIMLOCK MODE", pkg: "AIMLOCKMODE.3105", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMLOCKMODE.3105", state: $aimlockModeEnabled) }
                                 Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                                 PremiumToggleRow(name: "AIMNECK", pkg: "AIMNECK.3105", isOn: $aimneckEnabled, isBusy: patchOperationBusy) { togglePatch(pkg: "AIMNECK.3105", state: $aimneckEnabled) }
                             }
@@ -124,8 +124,8 @@ struct ContentView: View {
     }
 
     private func syncPatchStates() {
-        aimBody90Enabled = isPatchActive("AIM BODY 90%.3105")
-        aimlockModeEnabled = isPatchActive("AIMLOCK MODE.3105")
+        aimBody90Enabled = isPatchActive("AIMBODY90.3105")
+        aimlockModeEnabled = isPatchActive("AIMLOCKMODE.3105")
         aimneckEnabled = isPatchActive("AIMNECK.3105")
     }
 
@@ -136,8 +136,8 @@ struct ContentView: View {
 
     private func setPatchState(for packageFilename: String, enabled: Bool) {
         switch packageFilename {
-        case "AIM BODY 90%.3105": aimBody90Enabled = enabled
-        case "AIMLOCK MODE.3105": aimlockModeEnabled = enabled
+        case "AIMBODY90.3105": aimBody90Enabled = enabled
+        case "AIMLOCKMODE.3105": aimlockModeEnabled = enabled
         case "AIMNECK.3105": aimneckEnabled = enabled
         default: break
         }
