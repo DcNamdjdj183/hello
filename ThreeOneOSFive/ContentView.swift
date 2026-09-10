@@ -155,7 +155,7 @@ struct ContentView: View {
 
         let wasEnabled = state.wrappedValue
         patchOperationBusy = true
-        patchMessage = "Injecting \(pkg)..."
+        patchMessage = "Injecting \(pkg.replacingOccurrences(of: ".3105", with: ""))..."
         let project = item.project
         let projectID = item.id
 
@@ -382,20 +382,8 @@ struct PremiumToggleRow: View {
 // MARK: - Handlers
 
 private enum PatchAudioFeedback {
-    private static let synthesizer = AVSpeechSynthesizer()
-    static func bypassActivated() { speak("Module Injected") }
-    static func originalRestored() { speak("Module Offline") }
-    private static func speak(_ message: String) {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-        try? session.setActive(true, options: [])
-        synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: message)
-        utterance.rate = 0.5
-        utterance.pitchMultiplier = 1.0
-        utterance.volume = 0.90
-        synthesizer.speak(utterance)
-    }
+    static func bypassActivated() { AudioServicesPlaySystemSound(1057) }
+    static func originalRestored() { AudioServicesPlaySystemSound(1057) }
 }
 
 private struct PatchUnlockPrompt: View {
