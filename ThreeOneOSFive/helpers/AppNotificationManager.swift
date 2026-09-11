@@ -9,7 +9,7 @@ class AppNotificationManager: ObservableObject {
     @Published var notificationMessage = ""
     
     // ĐỔI LINK NÀY THÀNH LINK CLOUDFLARE WORKER CỦA BẠN
-    private let apiUrl = "https://app-notification-server.yourdomain.workers.dev/api/get-notification"
+    private let apiUrl = "https://app-notification-server.ddnstore.workers.dev/api/get-notification"
     
     // Lưu lại thời gian của thông báo mới nhất đã xem để không hiện lại nếu không có thông báo mới
     // Nếu bạn muốn LÚC NÀO thoát ra vào lại cũng hiện, thì tắt dòng check timestamp đi.
