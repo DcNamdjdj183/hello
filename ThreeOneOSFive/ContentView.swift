@@ -157,15 +157,15 @@ struct ContentView: View {
                                     .padding(.top, 16)
 
                                 VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "AIM BODY (Bật Sảnh)", pkg: "Bật Sảnh", isOn: $aimBodyLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8", name: "AIM BODY (Bật Sảnh)", state: $aimBodyLobbyEnabled) }
+                                    PremiumToggleRow(name: "AIM BODY (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimBodyLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8", name: "AIM BODY (Bat Sanh)", state: $aimBodyLobbyEnabled) }
                                     Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM CHEST (Bật Sảnh)", pkg: "Bật Sảnh", isOn: $aimChestLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE", name: "AIM CHEST (Bật Sảnh)", state: $aimChestLobbyEnabled) }
+                                    PremiumToggleRow(name: "AIM CHEST (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimChestLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE", name: "AIM CHEST (Bat Sanh)", state: $aimChestLobbyEnabled) }
                                     Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM DRAG (Bật Sảnh)", pkg: "Bật Sảnh", isOn: $aimDragLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17", name: "AIM DRAG (Bật Sảnh)", state: $aimDragLobbyEnabled) }
+                                    PremiumToggleRow(name: "AIM DRAG (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimDragLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17", name: "AIM DRAG (Bat Sanh)", state: $aimDragLobbyEnabled) }
                                     Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM NECK (Bật Sảnh)", pkg: "Bật Sảnh", isOn: $aimNeckLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3", name: "AIM NECK (Bật Sảnh)", state: $aimNeckLobbyEnabled) }
+                                    PremiumToggleRow(name: "AIM NECK (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimNeckLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3", name: "AIM NECK (Bat Sanh)", state: $aimNeckLobbyEnabled) }
                                     Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "MAGIC BULLET (Bật Sảnh)", pkg: "Bật Sảnh", isOn: $magicBulletLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "47AE459A-0707-4A7F-A831-96CE1381859C", name: "MAGIC BULLET (Bật Sảnh)", state: $magicBulletLobbyEnabled) }
+                                    PremiumToggleRow(name: "MAGIC BULLET (Bat Sanh)", pkg: "Bat Sanh", isOn: $magicBulletLobbyEnabled, isBusy: patchOperationBusy) { togglePatch(id: "47AE459A-0707-4A7F-A831-96CE1381859C", name: "MAGIC BULLET (Bat Sanh)", state: $magicBulletLobbyEnabled) }
                                 }
                                 .background(Color.black.opacity(0.3))
                                 .background(.ultraThinMaterial)
@@ -723,7 +723,7 @@ struct CommunityCard: View {
             Link(destination: URL(string: "https://zalo.me/g/miuatq2xhhh0tarsc3me")!) {
                 HStack {
                     Image(systemName: "bell.badge.fill")
-                    Text("Cộng đồng thông báo cập nhật")
+                    Text("Cong dong thong bao cap nhat")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                     Spacer()
                     Image(systemName: "chevron.right")
