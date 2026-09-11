@@ -168,6 +168,19 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .tint(.purple)
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .alert(isPresented: $notificationManager.showNotification) {
+            Alert(
+                title: Text(notificationManager.notificationTitle),
+                message: Text(notificationManager.notificationMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .onAppear {
+            notificationManager.fetchNotification()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            notificationManager.fetchNotification()
+        }
         .sheet(isPresented: $showCleaner) { CleanerView() }
         .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in PatchUnlockPrompt(store: patchStore) }
         .onAppear { syncPatchStates() }
