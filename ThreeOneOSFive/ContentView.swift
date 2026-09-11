@@ -678,9 +678,18 @@ struct DNSCard: View {
     @State private var dnsURL: URL?
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("DNS Profile")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+            HStack {
+                Text("DNS Profile")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                Text("Trang thai: SAFE")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(.green)
+                Text("| Khu vuc: GLOBAL")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(.cyan)
+            }
             
             Button(action: {
                 if let url = dnsURL {
