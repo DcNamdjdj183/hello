@@ -10,7 +10,10 @@ class AppNotificationManager: ObservableObject {
     
     private let apiUrl = "https://app-notification-server.ddnstore.workers.dev/api/get-notification"
     
-    @AppStorage("lastSeenNotificationTimestamp") private var lastSeenTimestamp: Double = 0
+    private var lastSeenTimestamp: Double {
+        get { UserDefaults.standard.double(forKey: "lastSeenNotificationTimestamp") }
+        set { UserDefaults.standard.set(newValue, forKey: "lastSeenNotificationTimestamp") }
+    }
     
     func fetchNotification() {
         guard let url = URL(string: apiUrl) else { return }
@@ -32,7 +35,8 @@ class AppNotificationManager: ObservableObject {
                     let timestamp = json["timestamp"] as? Double ?? 0
                     
                     DispatchQueue.main.async {
-                        if !message.isEmpty {
+                        // Only show if it's a new notification and not empty
+                        if !message.isEmpty && timestamp > self.lastSeenTimestamp {
                             self.notificationTitle = title
                             self.notificationMessage = message
                             self.showNotification = true

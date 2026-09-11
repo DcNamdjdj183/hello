@@ -8,6 +8,7 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var licenseManager: LicenseManager
     @State private var showSettings = false
+    @ObservedObject private var notificationManager = AppNotificationManager.shared
     @State private var showCleaner = false
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
