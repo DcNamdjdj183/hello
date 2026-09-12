@@ -120,7 +120,8 @@ struct ContentView: View {
                                 Text("Aim").tag(0)
                                 Text("Skin").tag(1)
                                 Text("Chams").tag(2)
-                            }
+                            Text("ESP").tag(3)
+                              }
                             .pickerStyle(SegmentedPickerStyle())
                             .padding(.bottom, 8)
 
@@ -188,6 +189,17 @@ struct ContentView: View {
                             } else if selectedScriptCategory == 2 {
                                 VStack(spacing: 0) {
                                     PremiumToggleRow(name: "CHAMS BLUE", pkg: "CHAMS-BLUE.3105", isOn: $chamsBlueEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882", name: "CHAMS BLUE", state: $chamsBlueEnabled) }
+                                }
+                                .background(Color.black.opacity(0.3))
+                                .background(.ultraThinMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+                                                        } else if selectedScriptCategory == 3 {
+                                VStack(spacing: 0) {
+                                    PremiumToggleRow(name: "ESP FREE FIRE TH", pkg: "com.dts.freefireth", isOn: $espFFTHEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505", name: "ESP FREE FIRE TH", state: $espFFTHEnabled) }
+                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                    PremiumToggleRow(name: "ESP FREE FIRE MAX", pkg: "com.dts.freefiremax", isOn: $espFFMAXEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "C1B4ACD2-2320-45E3-80B4-936B46076140", name: "ESP FREE FIRE MAX", state: $espFFMAXEnabled) }
                                 }
                                 .background(Color.black.opacity(0.3))
                                 .background(.ultraThinMaterial)
