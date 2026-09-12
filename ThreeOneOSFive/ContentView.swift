@@ -185,6 +185,7 @@ struct ContentView: View {
                             .padding(.top, 4)
 
                         VStack(spacing: 0) {
+                                    Group {
                             PremiumToggleRow(name: "AIM BODY 90%", pkg: "Log 40%", isOn: $aimBody90Enabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C19CBA7B-C108-4752-9221-4950D1B9E096", name: "AIM BODY 90%", state: $aimBody90Enabled) }
                             Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                             PremiumToggleRow(name: "AIMLOCK MODE", pkg: "Log 40%", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
@@ -193,12 +194,15 @@ struct ContentView: View {
                             Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                             PremiumToggleRow(name: "AIM DRAG", pkg: "Log 40%", isOn: $aimDragEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F", name: "AIM DRAG", state: $aimDragEnabled) }
                             Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                                    }
+                                    Group {
                             PremiumToggleRow(name: "AIM HEAD", pkg: "Log 40%", isOn: $aimHeadEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A", name: "AIM HEAD", state: $aimHeadEnabled) }
                             Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                             PremiumToggleRow(name: "AIM MALFORMATION", pkg: "Log 40%", isOn: $aimMalformationEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2", name: "AIM MALFORMATION", state: $aimMalformationEnabled) }
                             Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
                             PremiumToggleRow(name: "AIM NECK ANTENA", pkg: "Log 40%", isOn: $aimNeckAntenaEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F", name: "AIM NECK ANTENA", state: $aimNeckAntenaEnabled) }
-                        }
+                                    }
+}
                         .background(Color.black.opacity(0.3))
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
