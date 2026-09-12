@@ -12,7 +12,7 @@ class AppNotificationManager: ObservableObject {
     
     func fetchNotification() {
         // Delay fetching to prevent interrupting kernel exploits on app launch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
             guard let url = URL(string: self.apiUrl) else { return }
             
