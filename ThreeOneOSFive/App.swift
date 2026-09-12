@@ -119,10 +119,10 @@ class AppState: ObservableObject {
         guard applicable else { return }
 
         refreshKernelExploitStatus()
-        maybeAutoRunKernelExploit()
+        // maybeAutoRunKernelExploit() // Disabled to prevent auto panic
     }
 
-    private func maybeAutoRunKernelExploit() {
+    private func // maybeAutoRunKernelExploit() // Disabled to prevent auto panic {
         guard !kernelExploitRunning,
               !exploitStatus.isSuccess,
               !exploitStatus.isFailed,

@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @ObservedObject private var notificationManager = AppNotificationManager.shared
     @State private var showCleaner = false
+    @State private var showLog = false
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
     @State private var patchMessage = "Ready to inject"
@@ -222,6 +223,10 @@ struct ContentView: View {
             notificationManager.fetchNotification()
         }
         .sheet(isPresented: $showCleaner) { CleanerView() }
+        .sheet(isPresented: $showLog) { LogView() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowLogView"))) { _ in
+            showLog = true
+        }
         .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in PatchUnlockPrompt(store: patchStore) }
         .onAppear { syncPatchStates() }
         .onChange(of: scenePhase) { phase in
@@ -380,6 +385,39 @@ struct StatusCard: View {
                         .padding(.vertical, 6)
                         .background(appState.isSupported ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
                         .clipShape(Capsule())
+                }
+                
+                if appState.isSupported {
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            appState.runKernelExploitIfNeeded()
+                        }) {
+                            HStack {
+                                Image(systemName: appState.exploitStatus.isSuccess ? "checkmark.shield.fill" : (appState.kernelExploitRunning ? "hourglass" : "shield.lefthalf.filled"))
+                                Text(appState.exploitStatus.isSuccess ? "Exploit Active" : (appState.kernelExploitRunning ? "Injecting..." : "Initialize Exploit"))
+                            }
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(appState.exploitStatus.isSuccess ? Color.green : (appState.kernelExploitRunning ? Color.gray : Color.blue))
+                            .cornerRadius(12)
+                        }
+                        .disabled(appState.exploitStatus.isSuccess || appState.kernelExploitRunning)
+                        
+                        Button(action: {
+                            // Trigger sheet presentation instead of NavigationLink because we are not in a NavigationView
+                            NotificationCenter.default.post(name: NSNotification.Name("ShowLogView"), object: nil)
+                        }) {
+                            Image(systemName: "doc.text.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white)
+                                .frame(width: 50, height: 50)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                    }
+                    .padding(.top, 8)
                 }
             }
         }
