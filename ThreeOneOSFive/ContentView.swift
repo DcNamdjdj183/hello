@@ -572,6 +572,7 @@ struct PremiumToggleRow: View {
     let pkg: String
     @Binding var isOn: Bool
     let isBusy: Bool
+    var isDisabled: Bool = false
     let action: () -> Void
     
     var body: some View {
@@ -602,7 +603,7 @@ struct PremiumToggleRow: View {
             ))
             .labelsHidden()
             .tint(.purple)
-            .disabled(isBusy)
+            .disabled(isBusy || isDisabled)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
