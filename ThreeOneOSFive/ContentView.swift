@@ -346,8 +346,7 @@ struct ContentView: View {
                 if wasEnabled {
                     // If restore fails while exploit is active, it usually means the game was updated/reinstalled
                     // and the container fingerprint or file hashes changed. Force clear the receipt.
-                    if let backupRoot = try? PatchProjectLibrary.backupRootURL(),
-                       let receipt = DevicePatchService.latestReceipt(projectID: projectID) {
+                    if let receipt = DevicePatchService.latestReceipt(projectID: projectID) {
                         try? FileManager.default.removeItem(at: receipt.journalURL)
                     }
                     result = .restored
