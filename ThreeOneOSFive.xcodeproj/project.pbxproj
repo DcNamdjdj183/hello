@@ -95,8 +95,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		N3105P016 /* ESP_FREE_FIRE_TH.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = ESP_FREE_FIRE_TH.3105; sourceTree = "<group>"; };
-		N3105P017 /* ESP_FREE_FIRE_MAX.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = ESP_FREE_FIRE_MAX.3105; sourceTree = "<group>"; };
+		N3105P016 /* ESP_FREE_FIRE_TH.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_TH.3105"; sourceTree = "<group>"; };
+		N3105P017 /* ESP_FREE_FIRE_MAX.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_MAX.3105"; sourceTree = "<group>"; };
 		N3105D001 /* dns */ = {isa = PBXFileReference; lastKnownFileType = folder; path = dns; sourceTree = "<group>"; };
 		N3105V001 /* video */ = {isa = PBXFileReference; lastKnownFileType = folder; path = video; sourceTree = "<group>"; };
 		N3105P001 /* AIMBODY90.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/AIMBODY90.3105"; sourceTree = "<group>"; };
@@ -421,8 +421,6 @@
 				N3105B013,
 				N3105B014,
 				N3105B015,
-				N3105B016,
-				N3105B017,
 				N3105B016,
 				N3105B017,
 			);
