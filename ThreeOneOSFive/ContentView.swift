@@ -461,9 +461,6 @@ struct StatusCard: View {
             }
         }
         .padding(24)
-            }
-        }
-        .padding(24)
         .background(Color.black.opacity(0.3))
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
