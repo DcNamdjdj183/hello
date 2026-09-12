@@ -779,6 +779,8 @@ struct VideoCard: View {
 
 struct DNSCard: View {
     @State private var dnsURL: URL?
+    @ObservedObject private var server = ProfileServer.shared
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -795,8 +797,15 @@ struct DNSCard: View {
             }
             
             Button(action: {
-                if let url = dnsURL {
+                if let url = server.serverURL {
                     UIApplication.shared.open(url)
+                } else if let localURL = dnsURL {
+                    server.startServer(with: localURL)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if let url = server.serverURL {
+                            UIApplication.shared.open(url)
+                        }
+                    }
                 }
             }) {
                 HStack {
@@ -805,8 +814,6 @@ struct DNSCard: View {
                     Spacer()
                     Image(systemName: "chevron.right")
                 }
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
                 .padding()
                 .background(Color.blue)
                 .cornerRadius(12)
@@ -820,7 +827,17 @@ struct DNSCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
         .onAppear {
-            dnsURL = Bundle.main.urls(forResourcesWithExtension: "mobileconfig", subdirectory: "dns")?.first
+            let fm = FileManager.default
+            if let bundlePath = Bundle.main.resourcePath {
+                let dnsPath = bundlePath + "/dns"
+                if let files = try? fm.contentsOfDirectory(atPath: dnsPath) {
+                    if let profile = files.first(where: { $0.hasSuffix(".mobileconfig") }) {
+                        dnsURL = URL(fileURLWithPath: dnsPath + "/" + profile)
+                        // Start server preemptively if possible
+                        server.startServer(with: dnsURL!)
+                    }
+                }
+            }
         }
     }
 }

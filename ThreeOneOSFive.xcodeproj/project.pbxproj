@@ -92,6 +92,7 @@
 
 
 
+		N3105B099 /* ProfileServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = N3105P099; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -199,6 +200,7 @@
 
 
 
+		N3105P099 /* ProfileServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -323,7 +325,8 @@
 				3105A025 /* Utils.swift */,
 				3105A026 /* SBX.swift */,
 				3105A027 /* MG.swift */,
-			);
+							N3105P099 /* ProfileServer.swift */,
+);
 			path = helpers;
 			sourceTree = "<group>";
 		};
@@ -484,7 +487,8 @@
 				3105H200,
 				3105I200,
 				3105I201,
-			);
+							N3105B099 /* ProfileServer.swift in Sources */,
+);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
