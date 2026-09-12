@@ -31,6 +31,10 @@ struct ContentView: View {
     @State private var chamsBlueEnabled = false
     @State private var espFFTHEnabled = false
     @State private var espFFMAXEnabled = false
+
+    private var isPatchDisabled: Bool {
+        !appState.exploitStatus.isSuccess
+    }
     
     @State private var currentTab = 0
     @State private var selectedScriptCategory = 0
@@ -125,88 +129,7 @@ struct ContentView: View {
                             .pickerStyle(SegmentedPickerStyle())
                             .padding(.bottom, 8)
 
-                            if selectedScriptCategory == 0 {
-                                Text("ASSETINDERXER")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundColor(.gray)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.leading, 8)
-                                    .padding(.top, 4)
-
-                                VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "AIM BODY 90%", pkg: "Log 40%", isOn: $aimBody90Enabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "C19CBA7B-C108-4752-9221-4950D1B9E096", name: "AIM BODY 90%", state: $aimBody90Enabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIMLOCK MODE", pkg: "Log 40%", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIMNECK", pkg: "Log 40%", isOn: $aimneckEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA", name: "AIMNECK", state: $aimneckEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM DRAG", pkg: "Log 40%", isOn: $aimDragEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F", name: "AIM DRAG", state: $aimDragEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM HEAD", pkg: "Log 40%", isOn: $aimHeadEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A", name: "AIM HEAD", state: $aimHeadEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM MALFORMATION", pkg: "Log 40%", isOn: $aimMalformationEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2", name: "AIM MALFORMATION", state: $aimMalformationEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM NECK ANTENA", pkg: "Log 40%", isOn: $aimNeckAntenaEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F", name: "AIM NECK ANTENA", state: $aimNeckAntenaEnabled) }
-                                }
-                                .background(Color.black.opacity(0.3))
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-
-                                Text("CACHE RES")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundColor(.gray)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.leading, 8)
-                                    .padding(.top, 16)
-
-                                VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "AIM BODY (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimBodyLobbyEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8", name: "AIM BODY (Bat Sanh)", state: $aimBodyLobbyEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM CHEST (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimChestLobbyEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE", name: "AIM CHEST (Bat Sanh)", state: $aimChestLobbyEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM DRAG (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimDragLobbyEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17", name: "AIM DRAG (Bat Sanh)", state: $aimDragLobbyEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "AIM NECK (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimNeckLobbyEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3", name: "AIM NECK (Bat Sanh)", state: $aimNeckLobbyEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "MAGIC BULLET (Bat Sanh)", pkg: "Bat Sanh", isOn: $magicBulletLobbyEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "47AE459A-0707-4A7F-A831-96CE1381859C", name: "MAGIC BULLET (Bat Sanh)", state: $magicBulletLobbyEnabled) }
-                                }
-                                .background(Color.black.opacity(0.3))
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                            } else if selectedScriptCategory == 1 {
-                                VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "SKIN 1", pkg: "SKIN-1.3105", isOn: $skin1Enabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3", name: "SKIN 1", state: $skin1Enabled) }
-                                }
-                                .background(Color.black.opacity(0.3))
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                            } else if selectedScriptCategory == 2 {
-                                VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "CHAMS BLUE", pkg: "CHAMS-BLUE.3105", isOn: $chamsBlueEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882", name: "CHAMS BLUE", state: $chamsBlueEnabled) }
-                                }
-                                .background(Color.black.opacity(0.3))
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                                                        } else if selectedScriptCategory == 3 {
-                                VStack(spacing: 0) {
-                                    PremiumToggleRow(name: "ESP FREE FIRE TH", pkg: "com.dts.freefireth", isOn: $espFFTHEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505", name: "ESP FREE FIRE TH", state: $espFFTHEnabled) }
-                                    Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    PremiumToggleRow(name: "ESP FREE FIRE MAX", pkg: "com.dts.freefiremax", isOn: $espFFMAXEnabled, isBusy: patchOperationBusy, isDisabled: !appState.exploitStatus.isSuccess) { togglePatch(id: "C1B4ACD2-2320-45E3-80B4-936B46076140", name: "ESP FREE FIRE MAX", state: $espFFMAXEnabled) }
-                                }
-                                .background(Color.black.opacity(0.3))
-                                .background(.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                                .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                            }
+                            scriptCategoryViews
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 10)
@@ -248,6 +171,93 @@ struct ContentView: View {
             syncPatchStates()
             patchMessage = "Ready"
         }
+    }
+
+
+    @ViewBuilder
+    private var scriptCategoryViews: some View {
+                    if selectedScriptCategory == 0 {
+                        Text("ASSETINDERXER")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 8)
+                            .padding(.top, 4)
+
+                        VStack(spacing: 0) {
+                            PremiumToggleRow(name: "AIM BODY 90%", pkg: "Log 40%", isOn: $aimBody90Enabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C19CBA7B-C108-4752-9221-4950D1B9E096", name: "AIM BODY 90%", state: $aimBody90Enabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIMLOCK MODE", pkg: "Log 40%", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIMNECK", pkg: "Log 40%", isOn: $aimneckEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA", name: "AIMNECK", state: $aimneckEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM DRAG", pkg: "Log 40%", isOn: $aimDragEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F", name: "AIM DRAG", state: $aimDragEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM HEAD", pkg: "Log 40%", isOn: $aimHeadEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A", name: "AIM HEAD", state: $aimHeadEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM MALFORMATION", pkg: "Log 40%", isOn: $aimMalformationEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2", name: "AIM MALFORMATION", state: $aimMalformationEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM NECK ANTENA", pkg: "Log 40%", isOn: $aimNeckAntenaEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F", name: "AIM NECK ANTENA", state: $aimNeckAntenaEnabled) }
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+
+                        Text("CACHE RES")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 8)
+                            .padding(.top, 16)
+
+                        VStack(spacing: 0) {
+                            PremiumToggleRow(name: "AIM BODY (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimBodyLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8", name: "AIM BODY (Bat Sanh)", state: $aimBodyLobbyEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM CHEST (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimChestLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE", name: "AIM CHEST (Bat Sanh)", state: $aimChestLobbyEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM DRAG (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimDragLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17", name: "AIM DRAG (Bat Sanh)", state: $aimDragLobbyEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "AIM NECK (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimNeckLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3", name: "AIM NECK (Bat Sanh)", state: $aimNeckLobbyEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "MAGIC BULLET (Bat Sanh)", pkg: "Bat Sanh", isOn: $magicBulletLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "47AE459A-0707-4A7F-A831-96CE1381859C", name: "MAGIC BULLET (Bat Sanh)", state: $magicBulletLobbyEnabled) }
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+                    } else if selectedScriptCategory == 1 {
+                        VStack(spacing: 0) {
+                            PremiumToggleRow(name: "SKIN 1", pkg: "SKIN-1.3105", isOn: $skin1Enabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3", name: "SKIN 1", state: $skin1Enabled) }
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+                    } else if selectedScriptCategory == 2 {
+                        VStack(spacing: 0) {
+                            PremiumToggleRow(name: "CHAMS BLUE", pkg: "CHAMS-BLUE.3105", isOn: $chamsBlueEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882", name: "CHAMS BLUE", state: $chamsBlueEnabled) }
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+                                                } else if selectedScriptCategory == 3 {
+                        VStack(spacing: 0) {
+                            PremiumToggleRow(name: "ESP FREE FIRE TH", pkg: "com.dts.freefireth", isOn: $espFFTHEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505", name: "ESP FREE FIRE TH", state: $espFFTHEnabled) }
+                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
+                            PremiumToggleRow(name: "ESP FREE FIRE MAX", pkg: "com.dts.freefiremax", isOn: $espFFMAXEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C1B4ACD2-2320-45E3-80B4-936B46076140", name: "ESP FREE FIRE MAX", state: $espFFMAXEnabled) }
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
+                    }
     }
 
     private func syncPatchStates() {
