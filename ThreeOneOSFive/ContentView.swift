@@ -29,6 +29,8 @@ struct ContentView: View {
     @State private var magicBulletLobbyEnabled = false
     @State private var skin1Enabled = false
     @State private var chamsBlueEnabled = false
+    @State private var espFFTHEnabled = false
+    @State private var espFFMAXEnabled = false
     
     @State private var currentTab = 0
     @State private var selectedScriptCategory = 0
@@ -251,6 +253,8 @@ struct ContentView: View {
         magicBulletLobbyEnabled = isPatchActive(id: "47AE459A-0707-4A7F-A831-96CE1381859C")
         skin1Enabled = isPatchActive(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3")
         chamsBlueEnabled = isPatchActive(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882")
+        espFFTHEnabled = isPatchActive(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505")
+        espFFMAXEnabled = isPatchActive(id: "C1B4ACD2-2320-45E3-80B4-936B46076140")
     }
 
     private func isPatchActive(id: String) -> Bool {
@@ -274,6 +278,8 @@ struct ContentView: View {
         case "47AE459A-0707-4A7F-A831-96CE1381859C": magicBulletLobbyEnabled = enabled
         case "47C88561-C524-4164-9ADA-D5F578F4FDC3": skin1Enabled = enabled
         case "A677DFE5-1355-4CC8-9137-C54A5E85B882": chamsBlueEnabled = enabled
+        case "DE5A2E93-C78A-4A24-B401-9D25F4443505": espFFTHEnabled = enabled
+        case "C1B4ACD2-2320-45E3-80B4-936B46076140": espFFMAXEnabled = enabled
         default: break
         }
     }
