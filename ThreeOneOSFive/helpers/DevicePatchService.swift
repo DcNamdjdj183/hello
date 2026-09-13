@@ -2,34 +2,74 @@ import Foundation
 
 enum DevicePatchService {
     static func apply(project: PatchProject) throws -> PatchTransactionReceipt {
-        let bundleIDs = orderedBundleIdentifiers(in: project)
-        return try withResolvedContainers(bundleIDs: bundleIDs) { roots in
-            try PatchTransaction.apply(
-                project: project,
-                backupRoot: try PatchProjectLibrary.backupRootURL(),
-                containerResolver: { bundleID in
-                    guard let root = roots[bundleID] else {
-                        throw PatchPackageError.targetAppUnavailable(bundleID)
-                    }
-                    return root
-                }
-            )
+        var availableBundleIDs = Set<String>()
+        var roots: [String: URL] = [:]
+        
+        let customBundleID = UserDefaults.standard.string(forKey: "TargetGameBundleID") ?? ""
+        let originalBundleIDs = orderedBundleIdentifiers(in: project)
+        
+        for bundleID in originalBundleIDs {
+            var actualBundleID = bundleID
+            if !customBundleID.isEmpty && (bundleID == "com.dts.freefireth" || bundleID == "com.dts.freefiremax") {
+                actualBundleID = customBundleID
+            }
+            if let path = ContainerStore.resolveAppContainerPath(bundleID: actualBundleID),
+               ContainerStore.isApplicationContainerPath(path) {
+                availableBundleIDs.insert(bundleID)
+                roots[bundleID] = PatchPathValidator.canonicalFileURL(URL(fileURLWithPath: path, isDirectory: true))
+            }
         }
+        
+        guard !availableBundleIDs.isEmpty else {
+            throw PatchPackageError.targetAppUnavailable(originalBundleIDs.first ?? "unknown")
+        }
+        
+        var filteredProject = project
+        filteredProject.directories = project.directories.filter { availableBundleIDs.contains($0.bundleID) }
+        filteredProject.rules = project.rules.filter { availableBundleIDs.contains($0.bundleID) }
+        
+        return try PatchTransaction.apply(
+            project: filteredProject,
+            backupRoot: try PatchProjectLibrary.backupRootURL(),
+            containerResolver: { bundleID in
+                guard let root = roots[bundleID] else {
+                    throw PatchPackageError.targetAppUnavailable(bundleID)
+                }
+                return root
+            }
+        )
     }
 
     static func restore(receipt: PatchTransactionReceipt) throws {
-        let bundleIDs = try PatchTransaction.requiredBundleIdentifiers(for: receipt)
-        try withResolvedContainers(bundleIDs: bundleIDs) { roots in
-            try PatchTransaction.restore(
-                receipt: receipt,
-                containerResolver: { bundleID in
-                    guard let root = roots[bundleID] else {
-                        throw PatchPackageError.targetAppUnavailable(bundleID)
-                    }
-                    return root
-                }
-            )
+        let originalBundleIDs = try PatchTransaction.requiredBundleIdentifiers(for: receipt)
+        var availableBundleIDs = Set<String>()
+        var roots: [String: URL] = [:]
+        
+        let customBundleID = UserDefaults.standard.string(forKey: "TargetGameBundleID") ?? ""
+        
+        for bundleID in originalBundleIDs {
+            var actualBundleID = bundleID
+            if !customBundleID.isEmpty && (bundleID == "com.dts.freefireth" || bundleID == "com.dts.freefiremax") {
+                actualBundleID = customBundleID
+            }
+            if let path = ContainerStore.resolveAppContainerPath(bundleID: actualBundleID),
+               ContainerStore.isApplicationContainerPath(path) {
+                availableBundleIDs.insert(bundleID)
+                roots[bundleID] = PatchPathValidator.canonicalFileURL(URL(fileURLWithPath: path, isDirectory: true))
+            }
         }
+        
+        guard !availableBundleIDs.isEmpty else { return } // Nothing to restore if apps are gone
+        
+        try PatchTransaction.restore(
+            receipt: receipt,
+            containerResolver: { bundleID in
+                guard let root = roots[bundleID] else {
+                    throw PatchPackageError.targetAppUnavailable(bundleID)
+                }
+                return root
+            }
+        )
     }
 
     static func latestReceipt(projectID: UUID) -> PatchTransactionReceipt? {

@@ -474,6 +474,9 @@ struct InfoRow: View {
 struct LaunchCard: View {
     @Binding var showCleaner: Bool
     var onLaunch: (String) -> Void
+    @State private var showGameSelector = false
+    @AppStorage("TargetGameName") private var targetGameName = ""
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -485,6 +488,34 @@ struct LaunchCard: View {
                     .foregroundColor(.white)
                 Spacer()
             }
+            
+            Button(action: { showGameSelector = true }) {
+                HStack {
+                    Image(systemName: "scope")
+                        .font(.title2)
+                    VStack(alignment: .leading) {
+                        Text("Target Game")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                        Text(targetGameName.isEmpty ? "Default (Free Fire)" : targetGameName)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                    }
+                    Spacer()
+                    Text("Change")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.purple)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.purple.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+                .foregroundColor(.white)
+                .padding()
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            }
+            .sheet(isPresented: $showGameSelector) { GameSelectorView() }
             
             Button(action: { onLaunch("freefireth") }) {
                 HStack {
