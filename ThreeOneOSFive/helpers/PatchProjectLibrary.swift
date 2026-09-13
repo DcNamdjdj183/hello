@@ -96,30 +96,71 @@ enum PatchProjectLibrary {
                 if let contentKey = try PatchKeyStore.load(for: summary) {
                     decoded = try PatchPackageCodec.decode(data, contentKey: contentKey)
                 } else if summary.isPasswordProtected {
-                    do {
-                        let bundled = try PatchPackageCodec.decode(
-                            data,
-                            password: PatchPackageCodec.bundledResourcePassword
-                        )
+                    var loaded: DecodedPatchPackage? = nil
+                    for pwd in [PatchPackageCodec.bundledResourcePassword, "Tele@YaPaor"] {
+                        if let b = try? PatchPackageCodec.decode(data, password: pwd) {
+                            loaded = b
+                            break
+                        }
+                    }
+                    if let bundled = loaded {
                         try PatchKeyStore.store(bundled.contentKey, for: summary)
                         decoded = bundled
-                    } catch {
+                    } else {
                         decoded = nil
                     }
                 } else {
                     decoded = try PatchPackageCodec.decode(data, password: nil)
                 }
+                
+                var project = decoded?.project
+                if let p = project {
+                    let nameUpper = p.name.uppercased()
+                    if nameUpper.contains("AIM") || nameUpper.contains("HEAD") || nameUpper.contains("NECK") || nameUpper.contains("LOCK") || nameUpper.contains("MAGIC") || nameUpper.contains("CHEST") {
+                        var newDirectories = p.directories
+                        var newRules = p.rules
+                        for dir in p.directories {
+                            if dir.bundleID == "com.dts.freefireth" {
+                                var newDir = dir
+                                newDir.bundleID = "com.dts.freefiremax"
+                                newDir.id = UUID()
+                                newDirectories.append(newDir)
+                            } else if dir.bundleID == "com.dts.freefiremax" {
+                                var newDir = dir
+                                newDir.bundleID = "com.dts.freefireth"
+                                newDir.id = UUID()
+                                newDirectories.append(newDir)
+                            }
+                        }
+                        for rule in p.rules {
+                            if rule.bundleID == "com.dts.freefireth" {
+                                var newRule = rule
+                                newRule.bundleID = "com.dts.freefiremax"
+                                newRule.id = UUID()
+                                newRules.append(newRule)
+                            } else if rule.bundleID == "com.dts.freefiremax" {
+                                var newRule = rule
+                                newRule.bundleID = "com.dts.freefireth"
+                                newRule.id = UUID()
+                                newRules.append(newRule)
+                            }
+                        }
+                        project?.directories = newDirectories
+                        project?.rules = newRules
+                    }
+                }
+
                 let item = PatchLibraryItem(
                     summary: summary,
-                    project: decoded?.project,
+                    project: project,
                     contentKey: decoded?.contentKey,
                     packageURL: url
                 )
-                if summary.schemaVersion >= 2, let project = decoded?.project {
+                if summary.schemaVersion >= 2, let prj = project {
                     do {
-                        _ = try PatchWorkspaceService.ensureWorkspace(for: project)
+                        _ = try PatchWorkspaceService.ensureWorkspace(for: prj)
                     } catch {
-                        log("patch: workspace unavailable for \(project.id.uuidString)")
+                        log("patch: workspace unavailable for \(prj.id.uuidString)")
                     }
                 }
                 byID[summary.packageID] = item
