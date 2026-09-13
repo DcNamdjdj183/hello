@@ -54,6 +54,7 @@ struct ContentView: View {
                 }
             }
             .navigationBarHidden(true)
+        .navigationBarTitle("", displayMode: .inline)
         }
         .navigationViewStyle(.stack)
         .sheet(isPresented: $showSettings) {
@@ -244,7 +245,6 @@ struct AppDetailView: View {
                 }
                 
                 // Content
-                Spacer().frame(height: 0)
                 ScrollView {
                     VStack(spacing: 16) {
                         if tabs.isEmpty {
@@ -264,9 +264,7 @@ struct AppDetailView: View {
                                 Text("Lưu ý: Sử dụng không login acc capcut.")
                                     .font(.system(size: 12))
                                     .foregroundColor(.yellow)
-                                Text("Pass patches: 3105")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.cyan)
+
                             }
                             .padding()
                             .background(Color.white.opacity(0.05))
@@ -331,6 +329,7 @@ struct AppDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .navigationBarHidden(true)
+        .navigationBarTitle("", displayMode: .inline)
     }
     
     func iconForTab(_ tab: String) -> String {
@@ -462,7 +461,6 @@ struct CustomSettingsView: View {
             ZStack {
                 Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
                 
-                Spacer().frame(height: 0)
                 ScrollView {
                     VStack(spacing: 16) {
                         Button(action: { showLanguageAlert = true }) {
