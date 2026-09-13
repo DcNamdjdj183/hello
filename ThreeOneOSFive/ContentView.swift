@@ -1,3 +1,4 @@
+import UIKit
 import SwiftUI
 import SystemConfiguration
 
@@ -48,6 +49,8 @@ struct ContentView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             KeyStatusCard()
+                                .padding(.bottom, 8)
+                            KernelStatusCard()
                                 .padding(.bottom, 8)
                             Text("QUẢN LÝ APP")
                                 .font(.system(size: 13, weight: .bold))
@@ -107,11 +110,11 @@ struct DeviceInfoHeader: View {
             }
             
             HStack {
-                DeviceInfoItem(title: "Thiết Bị", value: "iPhone 11")
+                DeviceInfoItem(title: "Thiết Bị", value: UIDevice.current.model)
                 Spacer()
-                DeviceInfoItem(title: "Hệ Điều Hành", value: "iOS 18.0")
+                DeviceInfoItem(title: "Hệ Điều Hành", value: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)")
                 Spacer()
-                DeviceInfoItem(title: "RAM Trống", value: "871 MB / 4 GB")
+                DeviceInfoItem(title: "Dung Lượng Trống", value: freeDiskSpace())
             }
             .padding(16)
             .background(Color.white.opacity(0.05))
@@ -269,7 +272,7 @@ struct AppDetailView: View {
                             }
                             .padding(.top, 60)
                         } else if selectedTab == "CapcutPro" {
-                            InteractiveSectionView(title: "CAPCUT PRO", items: ["CAPCUTPRO/CapcutPro.3105"])
+                            InteractiveSectionView(title: "CAPCUT PRO", items: ["CAPCUTPRO/CapcutPro.3105"], appBundleId: app.bundleId)
                             
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Lưu ý: Sử dụng không login acc capcut.")
@@ -292,7 +295,7 @@ struct AppDetailView: View {
                                 "\(folder)/AIM DRAG (BẬT SẢNH).3105",
                                 "\(folder)/AIM NECK (BẬT SẢNH).3105",
                                 "\(folder)/MAGIC BULLET (BẬT SẢNH).3105"
-                            ])
+                            ], appBundleId: app.bundleId)
                         } else if selectedTab == "Chams" || selectedTab == "ESP" {
                             VStack(spacing: 20) {
                                 Image(systemName: "clock.fill")
@@ -315,7 +318,7 @@ struct AppDetailView: View {
                         .foregroundColor(.gray)
                     
                     Button(action: {
-                        // MỞ GAME
+                        _ = openApplicationForBundleID(app.bundleId)
                     }) {
                         HStack(spacing: 10) {
                             Image(systemName: "play.fill")
@@ -392,7 +395,8 @@ struct InteractiveSectionView: View {
 }
 
 
-func applyPatchFile(filename: String) {
+func applyPatchFile(filename: String, appBundleId: String) {
+    UserDefaults.standard.set(appBundleId, forKey: "TargetGameBundleID")
     guard let resourcePath = Bundle.main.resourcePath else { return }
     let patchesPath = resourcePath + "/Patches"
     let fm = FileManager.default
@@ -417,21 +421,25 @@ func applyPatchFile(filename: String) {
 
 struct InteractiveRow: View {
     let item: String
+    let appBundleId: String
+    @EnvironmentObject private var appState: AppState
     @AppStorage var isEnabled: Bool
     
-    init(item: String) {
+    init(item: String, appBundleId: String) {
         self.item = item
-        self._isEnabled = AppStorage(wrappedValue: false, "Feature_\(item)")
+        self.appBundleId = appBundleId
+        self._isEnabled = AppStorage(wrappedValue: false, "Feature_\(appBundleId)_\(item)")
     }
     
     var body: some View {
         Button(action: {
+            guard appState.exploitStatus.isSuccess else { return }
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
             isEnabled.toggle()
             if isEnabled {
                 DispatchQueue.global(qos: .userInitiated).async {
-                    applyPatchFile(filename: item)
+                    applyPatchFile(filename: item, appBundleId: appBundleId)
                 }
             }
         }) {
@@ -505,6 +513,55 @@ struct CustomSettingsView: View {
                             SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Đăng Xuất", subtitle: "Thay đổi Key", hasArrow: false)
                         }
                         
+                        
+                        HStack {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Liên Hệ Admin")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("http://zalo.me/0395109314")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
+                            }
+                            Spacer()
+                            Button(action: {
+                                if let url = URL(string: "http://zalo.me/0395109314") { UIApplication.shared.open(url) }
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            }
+                        }
+                        
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Nhóm Thông Báo")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Cộng đồng cập nhật")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
+                            }
+                            Spacer()
+                            Button(action: {
+                                if let url = URL(string: "https://zalo.me/g/miuatq2xhhh0tarsc3me") { UIApplication.shared.open(url) }
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            }
+                        }
+
                         HStack {
                             Image(systemName: "hand.tap.fill")
                                 .foregroundColor(.cyan)
@@ -778,5 +835,55 @@ struct KeyStatusCard: View {
         let m = (licenseManager.remainingSeconds % 3600) / 60
         let s = licenseManager.remainingSeconds % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+}
+
+struct KernelStatusCard: View {
+    @EnvironmentObject private var appState: AppState
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "cpu")
+                .foregroundColor(appState.exploitStatus.isSuccess ? .green : .red)
+            Text("Kernel Exploit:")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+            Spacer()
+            
+            if appState.exploitStatus.isSuccess {
+                Text("Active")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundColor(.green)
+            } else {
+                Button(action: {
+                    appState.runKernelExploitIfNeeded()
+                }) {
+                    Text("Kích Hoạt")
+                        .font(.system(size: 12, weight: .bold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.cyan.opacity(0.2))
+                        .foregroundColor(.cyan)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding()
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+    }
+}
+
+func freeDiskSpace() -> String {
+    do {
+        let systemAttributes = try FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory() as String)
+        let freeSpace = (systemAttributes[FileAttributeKey.systemFreeSize] as? NSNumber)?.int64Value ?? 0
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: freeSpace)
+    } catch {
+        return "Unknown"
     }
 }
