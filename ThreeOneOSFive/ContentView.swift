@@ -69,7 +69,7 @@ struct DeviceInfoHeader: View {
     var body: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("DELTA HACK VN")
+                Text("DNTWEAKS VN")
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
@@ -170,9 +170,9 @@ struct AppCardView: View {
 struct AppDetailView: View {
     let app: AppTarget
     @Environment(\.presentationMode) var presentationMode
-    @State private var selectedTab = "Aimbot"
+    @State private var selectedTab = "Chams"
     
-    let tabs = ["Proxy", "DNS", "Aimbot", "ESP"]
+    let tabs = ["Proxy", "DNS", "Chams", "ESP"]
     
     var body: some View {
         ZStack {
@@ -233,12 +233,12 @@ struct AppDetailView: View {
                         if selectedTab == "DNS" {
                             DNSSectionView(title: "CẤU HÌNH DNS")
                         } else if selectedTab == "Proxy" {
-                            MockSectionView(title: "PROXY DELTA VIP", items: ["Proxy Rank", "Proxy Cày K/D", "Proxy Magic"])
-                            MockSectionView(title: "PROXY DELTA VIP M2", items: ["Proxy An Toàn", "Proxy Bypass"])
-                        } else if selectedTab == "Aimbot" {
-                            MockSectionView(title: "AIMBOT & TỰ ĐỘNG", items: ["Aimbot VIP Mới Nhất", "Magic Bullet", "Headshot 100%"])
+                            InteractiveSectionView(title: "PROXY DELTA VIP", items: ["Proxy Rank", "Proxy Cày K/D", "Proxy Magic"])
+                            InteractiveSectionView(title: "PROXY DELTA VIP M2", items: ["Proxy An Toàn", "Proxy Bypass"])
+                        } else if selectedTab == "Chams" {
+                            InteractiveSectionView(title: "CHAMS & TỰ ĐỘNG", items: ["Aimbot VIP Mới Nhất", "Magic Bullet", "Headshot 100%"])
                         } else if selectedTab == "ESP" {
-                            MockSectionView(title: "ESP (HIỂN THỊ)", items: ["ESP Box / Khung", "ESP Line / Tia", "ESP Name / Tên"])
+                            InteractiveSectionView(title: "ESP (HIỂN THỊ)", items: ["ESP Box / Khung", "ESP Line / Tia", "ESP Name / Tên"])
                         }
                     }
                     .padding(.vertical, 16)
@@ -282,14 +282,14 @@ struct AppDetailView: View {
         switch tab {
         case "Proxy": return "network"
         case "DNS": return "server.rack"
-        case "Aimbot": return "scope"
+        case "Chams": return "person.fill.viewfinder"
         case "ESP": return "eye.fill"
         default: return "circle"
         }
     }
 }
 
-struct MockSectionView: View {
+struct InteractiveSectionView: View {
     let title: String
     let items: [String]
     
@@ -314,29 +314,7 @@ struct MockSectionView: View {
             
             VStack(spacing: 12) {
                 ForEach(items, id: \.self) { item in
-                    HStack(spacing: 16) {
-                        Image(systemName: "shield.fill")
-                            .foregroundColor(.cyan)
-                            .font(.system(size: 24))
-                            .frame(width: 40)
-                        
-                        Text(item)
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.system(size: 24))
-                    }
-                    .padding()
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
-                    )
+                    InteractiveRow(item: item)
                 }
             }
             .padding(.horizontal, 20)
@@ -344,9 +322,55 @@ struct MockSectionView: View {
     }
 }
 
+struct InteractiveRow: View {
+    let item: String
+    @AppStorage var isEnabled: Bool
+    
+    init(item: String) {
+        self.item = item
+        self._isEnabled = AppStorage(wrappedValue: false, "Feature_\(item)")
+    }
+    
+    var body: some View {
+        Button(action: {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            isEnabled.toggle()
+        }) {
+            HStack(spacing: 16) {
+                Image(systemName: "shield.fill")
+                    .foregroundColor(.cyan)
+                    .font(.system(size: 24))
+                    .frame(width: 40)
+                
+                Text(item)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isEnabled ? .green : .gray.opacity(0.5))
+                    .font(.system(size: 24))
+            }
+            .padding()
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isEnabled ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
+            )
+        }
+    }
+}
+
+
 struct CustomSettingsView: View {
     @Environment(\.presentationMode) var presentationMode
-    @State private var touchEnabled = true
+    @AppStorage("AppTouchPointerEnabled") private var touchEnabled = true
+    @State private var showLanguageAlert = false
+    @State private var showUpdateAlert = false
+    @State private var showInfoAlert = false
     
     var body: some View {
         NavigationView {
@@ -355,11 +379,25 @@ struct CustomSettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 16) {
-                        SettingsRow(icon: "globe", title: "Ngôn Ngữ", subtitle: "English", hasArrow: true)
-                        SettingsRow(icon: "arrow.triangle.2.circlepath", title: "Kiểm Tra Cập Nhật", subtitle: "Phiên bản mới nhất", hasArrow: true)
-                        SettingsRow(icon: "trash", title: "Xoá Dữ Liệu Đệm", subtitle: "Làm nhẹ app", hasArrow: true)
-                        SettingsRow(icon: "gearshape.2", title: "Khôi Phục Cài Đặt", subtitle: "Xoá mọi tuỳ chỉnh", hasArrow: true)
-                        SettingsRow(icon: "info.circle", title: "Thông Tin Ứng Dụng", subtitle: "Phiên bản: 19.3", hasArrow: true)
+                        Button(action: { showLanguageAlert = true }) {
+                            SettingsRow(icon: "globe", title: "Ngôn Ngữ", subtitle: "English", hasArrow: true)
+                        }
+                        
+                        Button(action: { showUpdateAlert = true }) {
+                            SettingsRow(icon: "arrow.triangle.2.circlepath", title: "Kiểm Tra Cập Nhật", subtitle: "Phiên bản mới nhất", hasArrow: true)
+                        }
+                        
+                        Button(action: { clearCache() }) {
+                            SettingsRow(icon: "trash", title: "Xoá Dữ Liệu Đệm", subtitle: "Làm nhẹ app", hasArrow: true)
+                        }
+                        
+                        Button(action: { resetSettings() }) {
+                            SettingsRow(icon: "gearshape.2", title: "Khôi Phục Cài Đặt", subtitle: "Khởi động lại app & Xoá tuỳ chỉnh", hasArrow: true)
+                        }
+                        
+                        Button(action: { showInfoAlert = true }) {
+                            SettingsRow(icon: "info.circle", title: "Thông Tin Ứng Dụng", subtitle: "Phiên bản: 19.3", hasArrow: true)
+                        }
                         
                         HStack {
                             Image(systemName: "hand.tap.fill")
@@ -398,10 +436,53 @@ struct CustomSettingsView: View {
                         .font(.system(size: 16, weight: .bold))
                 }
             }
+            .alert("Ngôn ngữ (Language)", isPresented: $showLanguageAlert) {
+                Button("Mở Cài đặt iOS") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Hủy", role: .cancel) {}
+            }
+            .alert("Kiểm tra cập nhật", isPresented: $showUpdateAlert) {
+                Button("Mở trang chủ") {
+                    if let url = URL(string: "https://github.com/DcNamdjdj183/hello") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Hủy", role: .cancel) {}
+            } message: { Text("Bạn đang dùng phiên bản DNTWEAKS VN mới nhất.") }
+            .alert("Thông tin", isPresented: $showInfoAlert) {
+                Button("Đóng", role: .cancel) {}
+            } message: { Text("DNTWEAKS VN\nPhiên bản VIP 19.3\nĐội ngũ phát triển: DNTweaks Team") }
         }
         .preferredColorScheme(.dark)
     }
+    
+    private func clearCache() {
+        let temp = FileManager.default.temporaryDirectory
+        if let items = try? FileManager.default.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil) {
+            for item in items {
+                try? FileManager.default.removeItem(at: item)
+            }
+        }
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+    }
+    
+    private func resetSettings() {
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            UserDefaults.standard.synchronize()
+        }
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            exit(0)
+        }
+    }
 }
+
 
 struct SettingsRow: View {
     let icon: String
