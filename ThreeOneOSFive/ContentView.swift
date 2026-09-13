@@ -269,7 +269,7 @@ struct AppDetailView: View {
                             }
                             .padding(.top, 60)
                         } else if selectedTab == "CapcutPro" {
-                            InteractiveSectionView(title: "CAPCUT PRO", items: ["CapcutPro.3105"])
+                            InteractiveSectionView(title: "CAPCUT PRO", items: ["CAPCUTPRO/CapcutPro.3105"])
                             
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Lưu ý: Sử dụng không login acc capcut.")
@@ -285,12 +285,13 @@ struct AppDetailView: View {
                         } else if selectedTab == "DNS" {
                             DNSSectionView(title: "CẤU HÌNH DNS")
                         } else if selectedTab == "Proxy" {
+                            let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
                             InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
-                                "AIM BODY (BẬT SẢNH).3105",
-                                "AIM CHEST (BẬT SẢNH).3105",
-                                "AIM DRAG (BẬT SẢNH).3105",
-                                "AIM NECK (BẬT SẢNH).3105",
-                                "MAGIC BULLET (BẬT SẢNH).3105"
+                                "\(folder)/AIM BODY (BẬT SẢNH).3105",
+                                "\(folder)/AIM CHEST (BẬT SẢNH).3105",
+                                "\(folder)/AIM DRAG (BẬT SẢNH).3105",
+                                "\(folder)/AIM NECK (BẬT SẢNH).3105",
+                                "\(folder)/MAGIC BULLET (BẬT SẢNH).3105"
                             ])
                         } else if selectedTab == "Chams" || selectedTab == "ESP" {
                             VStack(spacing: 20) {
@@ -440,7 +441,7 @@ struct InteractiveRow: View {
                     .font(.system(size: 24))
                     .frame(width: 40)
                 
-                Text(item.replacingOccurrences(of: ".3105", with: ""))
+                Text((item.components(separatedBy: "/").last ?? item).replacingOccurrences(of: ".3105", with: ""))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                 
