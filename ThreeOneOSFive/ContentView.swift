@@ -364,6 +364,7 @@ struct AppDetailView: View {
 struct InteractiveSectionView: View {
     let title: String
     let items: [String]
+    let appBundleId: String
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -386,7 +387,7 @@ struct InteractiveSectionView: View {
             
             VStack(spacing: 12) {
                 ForEach(items, id: \.self) { item in
-                    InteractiveRow(item: item)
+                    InteractiveRow(item: item, appBundleId: appBundleId)
                 }
             }
             .padding(.horizontal, 20)
