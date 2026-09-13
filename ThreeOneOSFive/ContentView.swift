@@ -13,8 +13,7 @@ let mockApps: [AppTarget] = [
     AppTarget(name: "Free Fire MAX", bundleId: "com.dts.freefiremax", iconName: "gamecontroller.fill"),
     AppTarget(name: "PUBG Mobile", bundleId: "com.vng.pubgmobile", iconName: "gamecontroller.fill"),
     AppTarget(name: "Liên Quân Mobile", bundleId: "com.garena.game.kgvn", iconName: "gamecontroller.fill"),
-    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "video.fill"),
-    AppTarget(name: "Locket", bundleId: "com.locket.Locket", iconName: "camera.fill")
+    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "video.fill"),
 ]
 
 struct ContentView: View {
@@ -283,6 +282,7 @@ struct AppDetailView: View {
         case "Proxy": return "network"
         case "DNS": return "server.rack"
         case "Chams": return "person.fill.viewfinder"
+        case "CapcutPro": return "star.fill"
         case "ESP": return "eye.fill"
         default: return "circle"
         }
