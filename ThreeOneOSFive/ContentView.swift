@@ -9,11 +9,11 @@ struct AppTarget: Identifiable {
 }
 
 let mockApps: [AppTarget] = [
-    AppTarget(name: "Free Fire", bundleId: "com.dts.freefireth", iconName: "gamecontroller.fill"),
-    AppTarget(name: "Free Fire MAX", bundleId: "com.dts.freefiremax", iconName: "gamecontroller.fill"),
-    AppTarget(name: "PUBG Mobile", bundleId: "com.vng.pubgmobile", iconName: "gamecontroller.fill"),
-    AppTarget(name: "Liên Quân Mobile", bundleId: "com.garena.game.kgvn", iconName: "gamecontroller.fill"),
-    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "video.fill"),
+    AppTarget(name: "Free Fire", bundleId: "com.dts.freefireth", iconName: "icon_ffth"),
+    AppTarget(name: "Free Fire MAX", bundleId: "com.dts.freefiremax", iconName: "icon_ffmax"),
+    AppTarget(name: "PUBG Mobile", bundleId: "com.vng.pubgmobile", iconName: "icon_pubg"),
+    AppTarget(name: "Liên Quân Mobile", bundleId: "com.garena.game.kgvn", iconName: "icon_lq"),
+    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "icon_capcut"),
 
 ]
 
@@ -128,12 +128,11 @@ struct AppCardView: View {
     let app: AppTarget
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: app.iconName)
-                .font(.system(size: 24))
-                .foregroundColor(.cyan)
+            Image(app.iconName)
+                .resizable()
+                .scaledToFill()
                 .frame(width: 50, height: 50)
-                .background(Color.white.opacity(0.05))
-                .cornerRadius(12)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(app.name)
