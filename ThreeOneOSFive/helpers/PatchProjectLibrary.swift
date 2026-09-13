@@ -63,7 +63,12 @@ enum PatchProjectLibrary {
 
         for sourceURL in bundledURLs {
             let destinationURL = root.appendingPathComponent(sourceURL.lastPathComponent)
-            guard !fileManager.fileExists(atPath: destinationURL.path) else { continue }
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                let destSize = (try? fileManager.attributesOfItem(atPath: destinationURL.path)[.size] as? NSNumber)?.int64Value ?? 0
+                let sourceSize = (try? fileManager.attributesOfItem(atPath: sourceURL.path)[.size] as? NSNumber)?.int64Value ?? -1
+                if destSize == sourceSize { continue }
+                try? fileManager.removeItem(at: destinationURL)
+            }
             do {
                 let data = try Data(contentsOf: sourceURL, options: .mappedIfSafe)
                 _ = try PatchPackageCodec.inspect(data)

@@ -5,7 +5,7 @@ import Security
 
 enum PatchPackageCodec {
     private static let magic = Data("3105PATCH\0".utf8)
-    static let latestSchemaVersion = 2
+    static let latestSchemaVersion = 100
     private static let minimumSchemaVersion = 1
 
     // Built-in resources are encrypted at rest. This value is only used by the
@@ -39,7 +39,7 @@ enum PatchPackageCodec {
         try encode(
             project: project,
             password: password,
-            schemaVersion: latestSchemaVersion,
+            schemaVersion: 2, // Hardcoded to 2 for backward compatibility
             kdfIterations: kdfIterations
         )
     }
