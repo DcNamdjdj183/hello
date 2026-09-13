@@ -1,20 +1,34 @@
 import re
 
-path = 'ThreeOneOSFive.xcodeproj/project.pbxproj'
-with open(path, 'r', encoding='utf-8') as f:
+with open("ThreeOneOSFive.xcodeproj/project.pbxproj", "r", encoding="utf-8") as f:
     text = f.read()
 
-# Find path = ThreeOneOSFive/Patches/OGIOS File (x).3105; and quote it
-def quote_path(match):
-    prefix = match.group(1)
-    unquoted_path = match.group(2)
-    return f'{prefix}"{unquoted_path}";'
+# 1. Fix path for ESP_FREE_FIRE_TH.3105
+text = text.replace(
+    'path = ESP_FREE_FIRE_TH.3105; sourceTree = "<group>";',
+    'path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_TH.3105"; sourceTree = "<group>";'
+)
 
-# Regex to match: path = ThreeOneOSFive/Patches/OGIOS File (x).3105;
-# (where it's not already quoted)
-fixed_text = re.sub(r'(path\s*=\s*)(ThreeOneOSFive/Patches/[^";]+);', quote_path, text)
+# 2. Fix path for ESP_FREE_FIRE_MAX.3105
+text = text.replace(
+    'path = ESP_FREE_FIRE_MAX.3105; sourceTree = "<group>";',
+    'path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_MAX.3105"; sourceTree = "<group>";'
+)
 
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(fixed_text)
+# 3. Remove duplicate N3105B016 and N3105B017 from files array
+# Replace exactly:
+# 				N3105B016,
+# 				N3105B017,
+# 				N3105B016,
+# 				N3105B017,
+duplicates = """				N3105B016,
+				N3105B017,
+				N3105B016,
+				N3105B017,"""
+fixed_files = """				N3105B016,
+				N3105B017,"""
+text = text.replace(duplicates, fixed_files)
 
-print("Fixed project.pbxproj")
+with open("ThreeOneOSFive.xcodeproj/project.pbxproj", "w", encoding="utf-8") as f:
+    f.write(text)
+print("Fixed PBXProj paths and duplicates")
