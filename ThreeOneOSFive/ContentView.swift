@@ -440,7 +440,7 @@ struct InteractiveRow: View {
                     .font(.system(size: 24))
                     .frame(width: 40)
                 
-                Text(item)
+                Text(item.replacingOccurrences(of: ".3105", with: ""))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                 
