@@ -27,6 +27,16 @@ struct ContentView: View {
     @State private var showSettings = false
     
     var body: some View {
+        Group {
+            if !licenseManager.isActive {
+                LicenseActivationView()
+            } else {
+                mainContent
+            }
+        }
+    }
+    
+    var mainContent: some View {
         NavigationView {
             ZStack {
                 Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
@@ -37,6 +47,8 @@ struct ContentView: View {
                     
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
+                            KeyStatusCard()
+                                .padding(.bottom, 8)
                             Text("QUẢN LÝ APP")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(.gray)
@@ -326,6 +338,8 @@ struct AppDetailView: View {
                 .background(Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea(edges: .bottom))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .ignoresSafeArea(.all, edges: .top)
+            .padding(.top, 44) // Fix Navigation Bar gap
         }
         .navigationBarHidden(true)
         .navigationBarTitle("", displayMode: .inline)
@@ -450,6 +464,7 @@ struct InteractiveRow: View {
 
 struct CustomSettingsView: View {
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject private var licenseManager: LicenseManager
     @AppStorage("AppTouchPointerEnabled") private var touchEnabled = true
     @State private var showLanguageAlert = false
     @State private var showUpdateAlert = false
@@ -480,6 +495,13 @@ struct CustomSettingsView: View {
                         
                         Button(action: { showInfoAlert = true }) {
                             SettingsRow(icon: "info.circle", title: "Thông Tin Ứng Dụng", subtitle: "Phiên bản: 19.3", hasArrow: true)
+                        }
+                        
+                        Button(action: {
+                            licenseManager.deactivate()
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Đăng Xuất", subtitle: "Thay đổi Key", hasArrow: false)
                         }
                         
                         HStack {
@@ -727,5 +749,33 @@ struct DNSSectionView: View {
             }
         }
         self.isVPNActive = false
+    }
+}
+
+struct KeyStatusCard: View {
+    @EnvironmentObject private var licenseManager: LicenseManager
+    var body: some View {
+        HStack {
+            Image(systemName: "timer")
+                .foregroundColor(.purple)
+            Text("Thời gian sử dụng:")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+            Spacer()
+            Text(formattedTime)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(licenseManager.remainingSeconds < 3600 ? .red : .green)
+        }
+        .padding()
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+    }
+    
+    var formattedTime: String {
+        let h = licenseManager.remainingSeconds / 3600
+        let m = (licenseManager.remainingSeconds % 3600) / 60
+        let s = licenseManager.remainingSeconds % 60
+        return String(format: "%02d:%02d:%02d", h, m, s)
     }
 }
