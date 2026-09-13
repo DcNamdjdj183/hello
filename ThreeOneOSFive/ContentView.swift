@@ -1,898 +1,440 @@
-import AVKit
 import SwiftUI
-import UIKit
-import AVFoundation
+
+struct AppTarget: Identifiable {
+    let id = UUID()
+    let name: String
+    let bundleId: String
+    let iconName: String
+}
+
+let mockApps: [AppTarget] = [
+    AppTarget(name: "Free Fire", bundleId: "com.dts.freefireth", iconName: "gamecontroller.fill"),
+    AppTarget(name: "Free Fire MAX", bundleId: "com.dts.freefiremax", iconName: "gamecontroller.fill"),
+    AppTarget(name: "PUBG Mobile", bundleId: "com.vng.pubgmobile", iconName: "gamecontroller.fill"),
+    AppTarget(name: "Liên Quân Mobile", bundleId: "com.garena.game.kgvn", iconName: "gamecontroller.fill"),
+    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "video.fill"),
+    AppTarget(name: "Locket", bundleId: "com.locket.Locket", iconName: "camera.fill")
+]
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var licenseManager: LicenseManager
+    @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
+    @EnvironmentObject private var fileOperationCoordinator: FileOperationCoordinator
+
     @State private var showSettings = false
-    @State private var showCleaner = false
-    @State private var showLog = false
-    @StateObject private var patchStore = PatchProjectStore()
-    @State private var patchOperationBusy = false
-    @State private var patchMessage = "Ready to inject"
     
-    @State private var aimBody90Enabled = false
-    @State private var aimlockModeEnabled = false
-    @State private var aimneckEnabled = false
-    @State private var aimDragEnabled = false
-    @State private var aimHeadEnabled = false
-    @State private var aimMalformationEnabled = false
-    @State private var aimNeckAntenaEnabled = false
-    @State private var aimBodyLobbyEnabled = false
-    @State private var aimChestLobbyEnabled = false
-    @State private var aimDragLobbyEnabled = false
-    @State private var aimNeckLobbyEnabled = false
-    @State private var magicBulletLobbyEnabled = false
-    @State private var skin1Enabled = false
-    @State private var chamsBlueEnabled = false
-    @State private var espFFTHEnabled = false
-    @State private var espFFMAXEnabled = false
-
-    private var isPatchDisabled: Bool {
-        !appState.exploitStatus.isSuccess
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    DeviceInfoHeader(showSettings: $showSettings)
+                        .padding(.top, 10)
+                    
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("QUẢN LÝ APP")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                            
+                            ForEach(mockApps) { app in
+                                NavigationLink(destination: AppDetailView(app: app)) {
+                                    AppCardView(app: app)
+                                }
+                            }
+                        }
+                        .padding(.bottom, 30)
+                    }
+                }
+            }
+            .navigationBarHidden(true)
+        }
+        .navigationViewStyle(.stack)
+        .sheet(isPresented: $showSettings) {
+            CustomSettingsView()
+        }
+        .preferredColorScheme(.dark)
     }
-    
-    @State private var currentTab = 0
-    @State private var selectedScriptCategory = 0
+}
 
+struct DeviceInfoHeader: View {
+    @Binding var showSettings: Bool
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("DELTA HACK VN")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                
+                Text("VIP 19.3")
+                    .font(.system(size: 10, weight: .bold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(6)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Button(action: { showSettings = true }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.gray)
+                        .padding(8)
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(Circle())
+                }
+            }
+            
+            HStack {
+                DeviceInfoItem(title: "Thiết Bị", value: "iPhone 11")
+                Spacer()
+                DeviceInfoItem(title: "Hệ Điều Hành", value: "iOS 18.0")
+                Spacer()
+                DeviceInfoItem(title: "RAM Trống", value: "871 MB / 4 GB")
+            }
+            .padding(16)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(16)
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+struct DeviceInfoItem: View {
+    let title: String
+    let value: String
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.gray)
+            Text(value)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.white)
+        }
+    }
+}
+
+struct AppCardView: View {
+    let app: AppTarget
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: app.iconName)
+                .font(.system(size: 24))
+                .foregroundColor(.cyan)
+                .frame(width: 50, height: 50)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(12)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(app.name)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                Text(app.bundleId)
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text("MỞ APP")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.cyan)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                )
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.03))
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
+    }
+}
+
+struct AppDetailView: View {
+    let app: AppTarget
+    @Environment(\.presentationMode) var presentationMode
+    @State private var selectedTab = "Aimbot"
+    
+    let tabs = ["Proxy", "DNS", "Aimbot", "ESP"]
+    
     var body: some View {
         ZStack {
-            PremiumBackground()
+            Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    VStack(alignment: .leading) {
-                        Text("DNXTWEAKS")
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(colors: [.white, Color.purple.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                            )
-                        Text(patchMessage)
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(patchOperationBusy ? .yellow : .gray)
-                            .lineLimit(1)
-                            .animation(.easeInOut, value: patchMessage)
+                    Button(action: { presentationMode.wrappedValue.dismiss() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .bold))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .foregroundColor(.cyan)
                     }
                     Spacer()
-                    if patchOperationBusy {
-                        ProgressView().tint(.purple)
-                            .padding(.trailing, 10)
-                    }
-                    Button(action: {
-                        licenseManager.deactivate()
-                    }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                            .padding(14)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                    }
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                            .padding(14)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    Text(app.name)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Color.clear.frame(width: 70)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                
+                // Top App Card
+                AppCardView(app: app)
+                    .padding(.bottom, 24)
+                
+                // Custom Tab Bar
+                HStack(spacing: 0) {
+                    ForEach(tabs, id: \.self) { tab in
+                        Button(action: { selectedTab = tab }) {
+                            VStack(spacing: 12) {
+                                Image(systemName: iconForTab(tab))
+                                    .font(.system(size: 20))
+                                Text(tab)
+                                    .font(.system(size: 12, weight: .bold))
+                                
+                                Rectangle()
+                                    .fill(selectedTab == tab ? Color.cyan : Color.clear)
+                                    .frame(height: 3)
+                                    .cornerRadius(1.5)
+                            }
+                            .foregroundColor(selectedTab == tab ? .cyan : .gray)
+                            .frame(maxWidth: .infinity)
+                        }
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
                 
-                TabView(selection: $currentTab) {
-                    // TAB 0: DASHBOARD
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 20) {
-                            StatusCard(appState: appState)
-                            KeyStatusCard(remainingSeconds: licenseManager.remainingSeconds)
-                            VideoCard()
-                            DNSCard()
-                            CommunityCard()
-                            LaunchCard(showCleaner: $showCleaner, onLaunch: openGame)
+                // Content
+                ScrollView {
+                    VStack(spacing: 16) {
+                        if selectedTab == "DNS" {
+                            MockSectionView(title: "CẤU HÌNH DNS", items: ["DNS AntiBan 4.0", "DNS AntiBan 5.0"])
+                        } else if selectedTab == "Proxy" {
+                            MockSectionView(title: "PROXY DELTA VIP", items: ["Proxy Rank", "Proxy Cày K/D", "Proxy Magic"])
+                            MockSectionView(title: "PROXY DELTA VIP M2", items: ["Proxy An Toàn", "Proxy Bypass"])
+                        } else if selectedTab == "Aimbot" {
+                            MockSectionView(title: "AIMBOT & TỰ ĐỘNG", items: ["Aimbot VIP Mới Nhất", "Magic Bullet", "Headshot 100%"])
+                        } else if selectedTab == "ESP" {
+                            MockSectionView(title: "ESP (HIỂN THỊ)", items: ["ESP Box / Khung", "ESP Line / Tia", "ESP Name / Tên"])
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                        .padding(.bottom, 100)
                     }
-                    .tabItem {
-                        Image(systemName: "house.fill")
-                        Text("Home")
+                    .padding(.vertical, 16)
+                    .padding(.bottom, 100) // Space for floating button
+                }
+            }
+            
+            // Bottom Floating Button
+            VStack(spacing: 12) {
+                Spacer()
+                
+                Text("Bản V1 - HỖ TRỢ TEST \(app.name) Khởi Chạy Sớm")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.gray)
+                
+                Button(action: {
+                    // MỞ GAME
+                }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 16))
+                        Text("MỞ GAME")
+                            .font(.system(size: 16, weight: .black))
                     }
-                    .tag(0)
-                    
-                    // TAB 1: SCRIPTS
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 16) {
-                            HStack {
-                                Text("Active Scripts")
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 4)
-                            
-                            Picker("Category", selection: $selectedScriptCategory) {
-                                Text("Aim").tag(0)
-                                Text("Skin").tag(1)
-                                Text("Chams").tag(2)
-                            Text("ESP").tag(3)
-                              }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .padding(.bottom, 8)
+                    .foregroundColor(.cyan)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.6), lineWidth: 1.5)
+                    )
+                    .cornerRadius(16)
+                }
+            }
+            .padding(24)
+        }
+        .navigationBarHidden(true)
+    }
+    
+    func iconForTab(_ tab: String) -> String {
+        switch tab {
+        case "Proxy": return "network"
+        case "DNS": return "server.rack"
+        case "Aimbot": return "scope"
+        case "ESP": return "eye.fill"
+        default: return "circle"
+        }
+    }
+}
 
-                            scriptCategoryViews
+struct MockSectionView: View {
+    let title: String
+    let items: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Rectangle()
+                    .fill(Color.cyan)
+                    .frame(width: 3, height: 16)
+                    .cornerRadius(1.5)
+                
+                Text(title)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Image(systemName: "ellipsis")
+                    .foregroundColor(.gray)
+            }
+            .padding(.horizontal, 24)
+            
+            VStack(spacing: 12) {
+                ForEach(items, id: \.self) { item in
+                    HStack(spacing: 16) {
+                        Image(systemName: "shield.fill")
+                            .foregroundColor(.cyan)
+                            .font(.system(size: 24))
+                            .frame(width: 40)
+                        
+                        Text(item)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 24))
+                    }
+                    .padding()
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.2), lineWidth: 1)
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+struct CustomSettingsView: View {
+    @Environment(\.presentationMode) var presentationMode
+    @State private var touchEnabled = true
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 16) {
+                        SettingsRow(icon: "globe", title: "Ngôn Ngữ", subtitle: "English", hasArrow: true)
+                        SettingsRow(icon: "arrow.triangle.2.circlepath", title: "Kiểm Tra Cập Nhật", subtitle: "Phiên bản mới nhất", hasArrow: true)
+                        SettingsRow(icon: "trash", title: "Xoá Dữ Liệu Đệm", subtitle: "Làm nhẹ app", hasArrow: true)
+                        SettingsRow(icon: "gearshape.2", title: "Khôi Phục Cài Đặt", subtitle: "Xoá mọi tuỳ chỉnh", hasArrow: true)
+                        SettingsRow(icon: "info.circle", title: "Thông Tin Ứng Dụng", subtitle: "Phiên bản: 19.3", hasArrow: true)
+                        
+                        HStack {
+                            Image(systemName: "hand.tap.fill")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Chạm Màn Hình")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Hiển thị con trỏ")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $touchEnabled)
+                                .labelsHidden()
+                                .tint(.cyan)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                        .padding(.bottom, 100)
+                        .padding(16)
+                        .background(Color.white.opacity(0.05))
+                        .cornerRadius(16)
                     }
-                    .tabItem {
-                        Image(systemName: "switch.2")
-                        Text("Scripts")
-                    }
-                    .tag(1)
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Cài Đặt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Đóng") { presentationMode.wrappedValue.dismiss() }
+                        .foregroundColor(.cyan)
+                        .font(.system(size: 16, weight: .bold))
                 }
             }
         }
         .preferredColorScheme(.dark)
-        .tint(.purple)
-        .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showCleaner) { CleanerView() }
-        .sheet(isPresented: $showLog) { LogView() }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowLogView"))) { _ in
-            showLog = true
-        }
-        .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in PatchUnlockPrompt(store: patchStore) }
-        .onAppear { syncPatchStates() }
-        .onChange(of: scenePhase) { phase in
-            guard phase == .active, !patchOperationBusy else { return }
-            syncPatchStates()
-            patchMessage = "Ready"
-        }
-    }
-
-
-    @ViewBuilder
-    private var scriptCategoryViews: some View {
-                    if selectedScriptCategory == 0 {
-                        Text("ASSETINDERXER")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 8)
-                            .padding(.top, 4)
-
-                        VStack(spacing: 0) {
-                                    Group {
-                            PremiumToggleRow(name: "AIM BODY 90%", pkg: "Log 40%", isOn: $aimBody90Enabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C19CBA7B-C108-4752-9221-4950D1B9E096", name: "AIM BODY 90%", state: $aimBody90Enabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIMLOCK MODE", pkg: "Log 40%", isOn: $aimlockModeEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154", name: "AIMLOCK MODE", state: $aimlockModeEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIMNECK", pkg: "Log 40%", isOn: $aimneckEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA", name: "AIMNECK", state: $aimneckEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM DRAG", pkg: "Log 40%", isOn: $aimDragEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F", name: "AIM DRAG", state: $aimDragEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                                    }
-                                    Group {
-                            PremiumToggleRow(name: "AIM HEAD", pkg: "Log 40%", isOn: $aimHeadEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A", name: "AIM HEAD", state: $aimHeadEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM MALFORMATION", pkg: "Log 40%", isOn: $aimMalformationEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2", name: "AIM MALFORMATION", state: $aimMalformationEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM NECK ANTENA", pkg: "Log 40%", isOn: $aimNeckAntenaEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F", name: "AIM NECK ANTENA", state: $aimNeckAntenaEnabled) }
-                                    }
-}
-                        .background(Color.black.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-
-                        Text("CACHE RES")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 8)
-                            .padding(.top, 16)
-
-                        VStack(spacing: 0) {
-                            PremiumToggleRow(name: "AIM BODY (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimBodyLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8", name: "AIM BODY (Bat Sanh)", state: $aimBodyLobbyEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM CHEST (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimChestLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE", name: "AIM CHEST (Bat Sanh)", state: $aimChestLobbyEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM DRAG (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimDragLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17", name: "AIM DRAG (Bat Sanh)", state: $aimDragLobbyEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "AIM NECK (Bat Sanh)", pkg: "Bat Sanh", isOn: $aimNeckLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3", name: "AIM NECK (Bat Sanh)", state: $aimNeckLobbyEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "MAGIC BULLET (Bat Sanh)", pkg: "Bat Sanh", isOn: $magicBulletLobbyEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "47AE459A-0707-4A7F-A831-96CE1381859C", name: "MAGIC BULLET (Bat Sanh)", state: $magicBulletLobbyEnabled) }
-                        }
-                        .background(Color.black.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                    } else if selectedScriptCategory == 1 {
-                        VStack(spacing: 0) {
-                            PremiumToggleRow(name: "SKIN 1", pkg: "SKIN-1.3105", isOn: $skin1Enabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3", name: "SKIN 1", state: $skin1Enabled) }
-                        }
-                        .background(Color.black.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                    } else if selectedScriptCategory == 2 {
-                        VStack(spacing: 0) {
-                            PremiumToggleRow(name: "CHAMS BLUE", pkg: "CHAMS-BLUE.3105", isOn: $chamsBlueEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882", name: "CHAMS BLUE", state: $chamsBlueEnabled) }
-                        }
-                        .background(Color.black.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                                                } else if selectedScriptCategory == 3 {
-                        VStack(spacing: 0) {
-                            PremiumToggleRow(name: "ESP FREE FIRE TH", pkg: "com.dts.freefireth", isOn: $espFFTHEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505", name: "ESP FREE FIRE TH", state: $espFFTHEnabled) }
-                            Divider().background(Color.white.opacity(0.1)).padding(.leading, 64)
-                            PremiumToggleRow(name: "ESP FREE FIRE MAX", pkg: "com.dts.freefiremax", isOn: $espFFMAXEnabled, isBusy: patchOperationBusy, isDisabled: isPatchDisabled) { togglePatch(id: "C1B4ACD2-2320-45E3-80B4-936B46076140", name: "ESP FREE FIRE MAX", state: $espFFMAXEnabled) }
-                        }
-                        .background(Color.black.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-                    }
-    }
-
-    private func syncPatchStates() {
-        aimBody90Enabled = isPatchActive(id: "C19CBA7B-C108-4752-9221-4950D1B9E096")
-        aimlockModeEnabled = isPatchActive(id: "161B8454-5C89-4BF2-93D9-B60ECDF2E154")
-        aimneckEnabled = isPatchActive(id: "306FC9CF-433A-4318-9FF3-26C07BFBD0FA")
-        aimDragEnabled = isPatchActive(id: "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F")
-        aimHeadEnabled = isPatchActive(id: "C3770F2A-A799-458F-9AEE-412B31B1CA4A")
-        aimMalformationEnabled = isPatchActive(id: "92A3B41B-5B86-45BC-A840-482BAF4BE7E2")
-        aimNeckAntenaEnabled = isPatchActive(id: "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F")
-        aimBodyLobbyEnabled = isPatchActive(id: "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8")
-        aimChestLobbyEnabled = isPatchActive(id: "5AA0E78E-7AAF-4980-AD85-4780B3C079AE")
-        aimDragLobbyEnabled = isPatchActive(id: "97D18C40-6BFB-421B-A434-B3A5E3E83A17")
-        aimNeckLobbyEnabled = isPatchActive(id: "1AE45A6B-4861-48B2-9647-2B2D5713A9C3")
-        magicBulletLobbyEnabled = isPatchActive(id: "47AE459A-0707-4A7F-A831-96CE1381859C")
-        skin1Enabled = isPatchActive(id: "47C88561-C524-4164-9ADA-D5F578F4FDC3")
-        chamsBlueEnabled = isPatchActive(id: "A677DFE5-1355-4CC8-9137-C54A5E85B882")
-        espFFTHEnabled = isPatchActive(id: "DE5A2E93-C78A-4A24-B401-9D25F4443505")
-        espFFMAXEnabled = isPatchActive(id: "C1B4ACD2-2320-45E3-80B4-936B46076140")
-    }
-
-    private func isPatchActive(id: String) -> Bool {
-        patchStore.items.first(where: { $0.id.uuidString.caseInsensitiveCompare(id) == .orderedSame })
-            .flatMap { DevicePatchService.latestReceipt(projectID: $0.id) } != nil
-    }
-
-    private func setPatchState(for id: String, enabled: Bool) {
-        switch id.uppercased() {
-        case "C19CBA7B-C108-4752-9221-4950D1B9E096": aimBody90Enabled = enabled
-        case "161B8454-5C89-4BF2-93D9-B60ECDF2E154": aimlockModeEnabled = enabled
-        case "306FC9CF-433A-4318-9FF3-26C07BFBD0FA": aimneckEnabled = enabled
-        case "E6C8911E-AC7F-4078-ABBC-EE57E1F97F3F": aimDragEnabled = enabled
-        case "C3770F2A-A799-458F-9AEE-412B31B1CA4A": aimHeadEnabled = enabled
-        case "92A3B41B-5B86-45BC-A840-482BAF4BE7E2": aimMalformationEnabled = enabled
-        case "497EDBD6-FA5C-4015-88CD-6C3DFE4C827F": aimNeckAntenaEnabled = enabled
-        case "3BD95FBE-B0C3-40B7-88C0-AEB2A9B9D8C8": aimBodyLobbyEnabled = enabled
-        case "5AA0E78E-7AAF-4980-AD85-4780B3C079AE": aimChestLobbyEnabled = enabled
-        case "97D18C40-6BFB-421B-A434-B3A5E3E83A17": aimDragLobbyEnabled = enabled
-        case "1AE45A6B-4861-48B2-9647-2B2D5713A9C3": aimNeckLobbyEnabled = enabled
-        case "47AE459A-0707-4A7F-A831-96CE1381859C": magicBulletLobbyEnabled = enabled
-        case "47C88561-C524-4164-9ADA-D5F578F4FDC3": skin1Enabled = enabled
-        case "A677DFE5-1355-4CC8-9137-C54A5E85B882": chamsBlueEnabled = enabled
-        case "DE5A2E93-C78A-4A24-B401-9D25F4443505": espFFTHEnabled = enabled
-        case "C1B4ACD2-2320-45E3-80B4-936B46076140": espFFMAXEnabled = enabled
-        default: break
-        }
-    }
-
-    private enum PatchActionResult {
-        case applied, restored, unavailable(String)
-    }
-
-    private func togglePatch(id: String, name: String, state: Binding<Bool>) {
-        guard !patchOperationBusy else { return }
-        guard let item = patchStore.items.first(where: { $0.id.uuidString.caseInsensitiveCompare(id) == .orderedSame }) else {
-            patchMessage = "Error: Script not found"
-            log("patch: package not found: \(name)")
-            return
-        }
-
-        let wasEnabled = state.wrappedValue
-        patchOperationBusy = true
-        patchMessage = "Injecting \(name)..."
-        let project = item.project
-        let projectID = item.id
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result: PatchActionResult
-            do {
-                if wasEnabled {
-                    guard let receipt = DevicePatchService.latestReceipt(projectID: projectID) else {
-                        result = .unavailable("No active receipt")
-                        DispatchQueue.main.async {
-                            self.setPatchState(for: id, enabled: false)
-                            self.patchMessage = "Restored"
-                            self.patchOperationBusy = false
-                        }
-                        return
-                    }
-                    try DevicePatchService.restore(receipt: receipt)
-                    result = .restored
-                } else {
-                    guard let project else {
-                        result = .unavailable("Unlock Required")
-                        DispatchQueue.main.async {
-                            self.patchStore.requestUnlock(for: item)
-                            self.patchMessage = "Enter Decryption Key"
-                            self.patchOperationBusy = false
-                        }
-                        return
-                    }
-                    _ = try DevicePatchService.apply(project: project)
-                    result = .applied
-                }
-            } catch {
-                if wasEnabled {
-                    // If restore fails while exploit is active, it usually means the game was updated/reinstalled
-                    // and the container fingerprint or file hashes changed. Force clear the receipt.
-                    if let receipt = DevicePatchService.latestReceipt(projectID: projectID) {
-                        try? FileManager.default.removeItem(at: receipt.journalURL)
-                    }
-                    result = .restored
-                    DispatchQueue.main.async {
-                        self.patchMessage = "Forced Off (Target Changed)"
-                    }
-                } else {
-                    result = .unavailable("Error: \(error.localizedDescription)")
-                }
-            }
-
-            DispatchQueue.main.async {
-                DispatchQueue.main.async {
-                    switch result {
-                    case .applied:
-                        self.setPatchState(for: id, enabled: true)
-                        self.patchMessage = "Script Injected!"
-                        PatchAudioFeedback.bypassActivated()
-                    case .restored:
-                        self.setPatchState(for: id, enabled: false)
-                        self.patchMessage = "Script Restored!"
-                        PatchAudioFeedback.originalRestored()
-                    case .unavailable(let message):
-                        self.patchMessage = message
-                    }
-                    self.patchOperationBusy = false
-                }
-            }
-        }
-    }
-
-    private func openGame(scheme: String) {
-        guard let url = URL(string: "\(scheme)://") else { return }
-        UIApplication.shared.open(url, options: [:]) { success in log("launch: \(scheme) success=\(success)") }
     }
 }
 
-// MARK: - Beautiful UI Components
-
-struct StatusCard: View {
-    @ObservedObject var appState: AppState
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Image(systemName: "iphone.gen3")
-                    .font(.system(size: 22))
-                    .foregroundColor(.purple)
-                Text("Device Identity")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Spacer()
-            }
-            
-            VStack(spacing: 14) {
-                InfoRow(title: "OS Version", value: AppInfo.osVersion)
-                InfoRow(title: "Hardware", value: AppInfo.displayMachineName)
-                HStack {
-                    Text("Kernel Support")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Text(appState.isSupported ? "Supported" : "Unsupported")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(appState.isSupported ? .green : .red)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(appState.isSupported ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
-                        .clipShape(Capsule())
-                }
-                
-                if appState.isSupported {
-                    HStack {
-                        Text("Exploit Status")
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Text(appState.exploitStatus.isSuccess ? "Active" : (appState.kernelExploitRunning ? "Injecting..." : "Waiting"))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(appState.exploitStatus.isSuccess ? .green : (appState.kernelExploitRunning ? .yellow : .orange))
-                    }
-                    
-                    Button(action: {
-                        NotificationCenter.default.post(name: NSNotification.Name("ShowLogView"), object: nil)
-                    }) {
-                        HStack {
-                            Image(systemName: "doc.text.fill")
-                            Text("View Session Logs")
-                        }
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                    .padding(.top, 8)
-                }
-            }
-        }
-        .padding(24)
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-    }
-}
-
-struct InfoRow: View {
+struct SettingsRow: View {
+    let icon: String
     let title: String
-    let value: String
+    let subtitle: String
+    let hasArrow: Bool
+    
     var body: some View {
         HStack {
-            Text(title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundColor(.gray)
-            Spacer()
-            Text(value)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+            Image(systemName: icon)
                 .foregroundColor(.white)
-        }
-    }
-}
-
-struct LaunchCard: View {
-    @Binding var showCleaner: Bool
-    var onLaunch: (String) -> Void
-    @State private var showGameSelector = false
-    @AppStorage("TargetGameName") private var targetGameName = ""
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Image(systemName: "gamecontroller.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(.purple)
-                Text("Quick Launch")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                Spacer()
-            }
-            
-            Button(action: { showGameSelector = true }) {
-                HStack {
-                    Image(systemName: "scope")
-                        .font(.title2)
-                    VStack(alignment: .leading) {
-                        Text("Target Game")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text(targetGameName.isEmpty ? "Default (Free Fire)" : targetGameName)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                    }
-                    Spacer()
-                    Text("Change")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.purple)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.purple.opacity(0.2))
-                        .clipShape(Capsule())
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
-            }
-            .sheet(isPresented: $showGameSelector) { GameSelectorView() }
-            
-            Button(action: { onLaunch("freefireth") }) {
-                HStack {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                    Text("Launch Free Fire Normal")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(LinearGradient(colors: [.purple, .indigo], startPoint: .leading, endPoint: .trailing))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .purple.opacity(0.3), radius: 8, y: 4)
-            }
-            
-            Button(action: { showCleaner = true }) {
-                HStack {
-                    Image(systemName: "trash.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.red)
-                    Text("Clean Cache")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
-            }
-            
-            Button(action: { NotificationCenter.default.post(name: NSNotification.Name("ShowLogView"), object: nil) }) {
-                HStack {
-                    Image(systemName: "doc.text.viewfinder")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                    Text("View System Logs")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
-            }
-        }
-        .padding(24)
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
-    }
-}
-
-struct PremiumToggleRow: View {
-    let name: String
-    let pkg: String
-    @Binding var isOn: Bool
-    let isBusy: Bool
-    var isDisabled: Bool = false
-    let action: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(isOn ? Color.purple.opacity(0.2) : Color.white.opacity(0.08))
-                    .frame(width: 36, height: 36)
-                Image(systemName: isOn ? "checkmark.seal.fill" : "puzzlepiece.fill")
-                    .foregroundColor(isOn ? .purple : .gray)
-                    .font(.system(size: 16))
-            }
+                .font(.system(size: 20))
+                .frame(width: 30)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(name)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(isOn ? .white : .gray.opacity(0.9))
-                Text(pkg.replacingOccurrences(of: ".3105", with: ""))
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(.gray.opacity(0.7))
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: Binding(
-                get: { isOn },
-                set: { _ in action() }
-            ))
-            .labelsHidden()
-            .tint(.purple)
-            .disabled(isBusy || isDisabled)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !isBusy { action() }
-        }
-        .opacity(isBusy ? 0.6 : 1.0)
-    }
-}
-
-// MARK: - Handlers
-
-private enum PatchAudioFeedback {
-    static func bypassActivated() { AudioServicesPlaySystemSound(1057) }
-    static func originalRestored() { AudioServicesPlaySystemSound(1057) }
-}
-
-private struct PatchUnlockPrompt: View {
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var store: PatchProjectStore
-    @State private var password = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    SecureField("Decryption Key", text: $password)
-                        .textContentType(.password)
-                        .submitLabel(.done)
-                        .onSubmit(unlock)
-                        .onChange(of: password) { _ in store.clearUnlockError() }
-                    if let errorKey = store.unlockErrorKey {
-                        Text(AppLanguage.english.text(errorKey))
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-                } footer: {
-                    Text("Enter key to decrypt and inject script.")
-                }
-            }
-            .navigationTitle("Unlock Script")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Unlock", action: unlock)
-                        .disabled(password.isEmpty || store.isBusy)
-                }
-            }
-        }
-    }
-    private func unlock() {
-        guard !password.isEmpty else { return }
-        store.unlock(password: password)
-    }
-}
-
-struct PremiumBackground: View {
-    @State private var animate = false
-    var body: some View {
-        ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-            
-            Circle()
-                .fill(Color.purple.opacity(0.15))
-                .frame(width: 300, height: 300)
-                .blur(radius: 80)
-                .offset(x: animate ? 100 : -100, y: animate ? -100 : 100)
-            
-            Circle()
-                .fill(Color.indigo.opacity(0.15))
-                .frame(width: 300, height: 300)
-                .blur(radius: 80)
-                .offset(x: animate ? -100 : 100, y: animate ? 100 : -100)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
-                animate = true
-            }
-        }
-    }
-}
-
-struct AnimatedHyperBackdrop: View {
-    @State private var animate = false
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color.black.ignoresSafeArea()
-                Circle()
-                    .fill(Color.cyan.opacity(0.12))
-                    .frame(width: 280, height: 280)
-                    .blur(radius: 70)
-                    .offset(x: animate ? 120 : -120, y: -proxy.size.height * 0.23)
-                Circle()
-                    .fill(Color.purple.opacity(0.08))
-                    .frame(width: 260, height: 260)
-                    .blur(radius: 80)
-                    .offset(x: animate ? -100 : 100, y: proxy.size.height * 0.22)
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) { animate = true }
-            }
-        }
-        .ignoresSafeArea()
-    }
-}
-
-struct KeyStatusCard: View {
-    let remainingSeconds: Int
-    var body: some View {
-        HStack {
-            Image(systemName: "timer")
-                .foregroundColor(.purple)
-            Text("License Time Remaining:")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-            Spacer()
-            Text(formattedTime)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(remainingSeconds < 3600 ? .red : .green)
-        }
-        .padding()
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-    }
-    
-    var formattedTime: String {
-        let h = remainingSeconds / 3600
-        let m = (remainingSeconds % 3600) / 60
-        let s = remainingSeconds % 60
-        return String(format: "%02d:%02d:%02d", h, m, s)
-    }
-}
-
-struct VideoCard: View {
-    @State private var player: AVPlayer?
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Tutorial Video")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-            
-            if let player = player {
-                VideoPlayer(player: player)
-                    .frame(height: 200)
-                    .cornerRadius(12)
-            } else {
-                Rectangle()
-                    .fill(Color.white.opacity(0.1))
-                    .frame(height: 200)
-                    .cornerRadius(12)
-                    .overlay(Text("No video found").foregroundColor(.gray))
-            }
-        }
-        .padding()
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-        .onAppear {
-            if let url = Bundle.main.urls(forResourcesWithExtension: "mp4", subdirectory: "video")?.first ?? Bundle.main.urls(forResourcesWithExtension: "mov", subdirectory: "video")?.first {
-                player = AVPlayer(url: url)
-            }
-        }
-    }
-}
-
-struct DNSCard: View {
-    @State private var dnsURL: URL?
-    @ObservedObject private var server = ProfileServer.shared
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("DNS Profile")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                Text(title)
                     .foregroundColor(.white)
-                Spacer()
-                Text("Trang thai: SAFE")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.green)
-                Text("| Khu vuc: GLOBAL")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.cyan)
+                    .font(.system(size: 15, weight: .bold))
+                Text(subtitle)
+                    .foregroundColor(.gray)
+                    .font(.system(size: 12))
             }
             
-            Button(action: {
-                if let url = server.serverURL {
-                    UIApplication.shared.open(url)
-                } else if let localURL = dnsURL {
-                    server.startServer(with: localURL)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        if let url = server.serverURL {
-                            UIApplication.shared.open(url)
-                        }
-                    }
-                }
-            }) {
-                HStack {
-                    Image(systemName: "network")
-                    Text("Install DNS Profile")
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                }
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(12)
-            }
-            .disabled(dnsURL == nil)
-            .opacity(dnsURL == nil ? 0.5 : 1)
-        }
-        .padding()
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-        .onAppear {
-            let fm = FileManager.default
-            if let bundlePath = Bundle.main.resourcePath {
-                let dnsPath = bundlePath + "/dns"
-                if let files = try? fm.contentsOfDirectory(atPath: dnsPath) {
-                    if let profile = files.first(where: { $0.hasSuffix(".mobileconfig") }) {
-                        dnsURL = URL(fileURLWithPath: dnsPath + "/" + profile)
-                        // Start server preemptively if possible
-                        server.startServer(with: dnsURL!)
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct CommunityCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Community & Support")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+            Spacer()
             
-            Link(destination: URL(string: "https://zalo.me/g/miuatq2xhhh0tarsc3me")!) {
-                HStack {
-                    Image(systemName: "bell.badge.fill")
-                    Text("Cong dong thong bao cap nhat")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(12)
-            }
-            
-            Link(destination: URL(string: "http://zalo.me/0395109314")!) {
-                HStack {
-                    Image(systemName: "person.crop.circle.fill")
-                    Text("Zalo Admin")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                }
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.purple)
-                .cornerRadius(12)
+            if hasArrow {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.system(size: 12, weight: .bold))
             }
         }
-        .padding()
-        .background(Color.black.opacity(0.3))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+        .padding(16)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(16)
     }
 }
