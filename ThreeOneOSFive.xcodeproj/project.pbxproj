@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		N3105GSV2 /* GameSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N3105GSV1 /* GameSelectorView.swift */; };
 		N3105B016 /* ESP_FREE_FIRE_TH.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P016; };
 		N3105B017 /* ESP_FREE_FIRE_MAX.3105 in Resources */ = {isa = PBXBuildFile; fileRef = N3105P017; };
 		N3105D002 /* dns in Resources */ = {isa = PBXBuildFile; fileRef = N3105D001; };
@@ -96,6 +97,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		N3105GSV1 /* GameSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSelectorView.swift; sourceTree = "<group>"; };
 		N3105P016 /* ESP_FREE_FIRE_TH.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_TH.3105"; sourceTree = "<group>"; };
 		N3105P017 /* ESP_FREE_FIRE_MAX.3105 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ThreeOneOSFive/Patches/ESP_FREE_FIRE_MAX.3105"; sourceTree = "<group>"; };
 		N3105D001 /* dns */ = {isa = PBXFileReference; lastKnownFileType = folder; path = dns; sourceTree = "<group>"; };
@@ -265,6 +267,7 @@
 		3105A404 /* views */ = {
 			isa = PBXGroup;
 			children = (
+				N3105GSV1 /* GameSelectorView.swift */,
 				3105A098 /* DesignSystem.swift */,
 				3105A023 /* SettingsView.swift */,
 				3105A024 /* LogView.swift */,
