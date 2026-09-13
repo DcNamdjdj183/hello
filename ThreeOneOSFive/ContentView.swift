@@ -388,7 +388,7 @@ func applyPatchFile(filename: String) {
             if file.hasSuffix(filename) {
                 let fullPath = patchesPath + "/" + file
                 if let data = try? Data(contentsOf: URL(fileURLWithPath: fullPath)) {
-                    let passes = ["3105", "Tele@YaPaor", ""]
+                    let passes = ["3105", ""]
                     for pass in passes {
                         if let decoded = try? PatchPackageCodec.decode(data, password: pass.isEmpty ? nil : pass) {
                             _ = try? DevicePatchService.apply(project: decoded.project)
