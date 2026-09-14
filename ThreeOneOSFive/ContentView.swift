@@ -289,12 +289,32 @@ struct AppDetailView: View {
                             DNSSectionView(title: "CẤU HÌNH DNS")
                         } else if selectedTab == "Proxy" {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
-                            InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
-                                "\(folder)/AIM BODY (BẬT SẢNH).3105",
-                                "\(folder)/AIM CHEST (BẬT SẢNH).3105",
-                                "\(folder)/AIM DRAG (BẬT SẢNH).3105",
-                                "\(folder)/AIM NECK (BẬT SẢNH).3105",
-                                "\(folder)/MAGIC BULLET (BẬT SẢNH).3105"
+                                                        InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
+                                "\(folder)/AIM BODY - bật sảnh -.3105",
+                                "\(folder)/AIM DỊ TẬT - bật 40- --2.3105",
+                                "\(folder)/AIM DỊ TẬT - bật 40- -.3105",
+                                "\(folder)/AIM DRAG CÂN CHECK USP - bật 40- --2.3105",
+                                "\(folder)/AIM DRAG CÂN CHECK USP - bật 40- -.3105",
+                                "\(folder)/AIM HEAD - bật 40- --2.3105",
+                                "\(folder)/AIM LOCK - bật 40- -.3105",
+                                "\(folder)/AIM NECK - bật 40- -.3105",
+                                "\(folder)/AIMHEAD CÂN CHECK KÈO TIỀN - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/AIMNECK CÂN CHECK KÈO TIỀN - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/ESP - AIMHEAD V2 - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/ESP - AIMNECK V1 - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/Mod V10 - Alok -.3105",
+                                "\(folder)/Mod V11 - Nairi -.3105",
+                                "\(folder)/Mod V13 - Santino -.3105",
+                                "\(folder)/Mod V14 - Ryden -.3105",
+                                "\(folder)/Mod V16 - Ignis -.3105",
+                                "\(folder)/Mod V17 - Alok -.3105",
+                                "\(folder)/Mod V2 - Live -.3105",
+                                "\(folder)/Mod V4 - Alok -.3105",
+                                "\(folder)/Mod V5 - Alok -.3105",
+                                "\(folder)/Mod V6 - Alok -.3105",
+                                "\(folder)/Mod V7 - Alok -.3105",
+                                "\(folder)/Mod V8 - Alok -.3105",
+                                "\(folder)/Mod V9 - Alok -.3105"
                             ], appBundleId: app.bundleId)
                         } else if selectedTab == "Chams" || selectedTab == "ESP" {
                             VStack(spacing: 20) {
