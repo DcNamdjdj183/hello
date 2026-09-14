@@ -291,9 +291,9 @@ struct AppDetailView: View {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
                                                         InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
                                 "\(folder)/AIM BODY - bật sảnh -.3105",
-                                "\(folder)/AIM DỊ TẬT - bật 40- --2.3105",
-                                "\(folder)/AIM DRAG CÂN CHECK USP - bật 40- --2.3105",
-                                "\(folder)/AIM HEAD - bật 40- --2.3105",
+                                "\(folder)/AIM DỊ TẬT - bật 40- -.3105",
+                                "\(folder)/AIM DRAG CÂN CHECK USP - bật 40- -.3105",
+                                "\(folder)/AIM HEAD - bật 40- -.3105",
                                 "\(folder)/AIM LOCK - bật 40- -.3105",
                                 "\(folder)/AIM NECK - bật 40- -.3105",
                                 "\(folder)/AIMHEAD CÂN CHECK KÈO TIỀN - BẬT NGOÀI GAME -.3105",
