@@ -1,0 +1,18 @@
+                   
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Nhóm Thông Báo")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("Cộng đồng cập nhật")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
+                            }
+                            Spacer()
+                            Button(action: {
+                                if l

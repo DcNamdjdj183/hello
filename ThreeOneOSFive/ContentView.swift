@@ -544,13 +544,13 @@ struct CustomSettingsView: View {
                                 Text("Liên Hệ Admin")
                                     .foregroundColor(.white)
                                     .font(.system(size: 15, weight: .bold))
-                                Text("http://zalo.me/0395109314")
+                                Text("http://zalo.me/0846260109")
                                     .foregroundColor(.gray)
                                     .font(.system(size: 12))
                             }
                             Spacer()
                             Button(action: {
-                                if let url = URL(string: "http://zalo.me/0395109314") { UIApplication.shared.open(url) }
+                                if let url = URL(string: "http://zalo.me/0846260109") { UIApplication.shared.open(url) }
                             }) {
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
@@ -558,29 +558,7 @@ struct CustomSettingsView: View {
                             }
                         }
                         
-                        HStack {
-                            Image(systemName: "bell.badge.fill")
-                                .foregroundColor(.cyan)
-                                .font(.system(size: 20))
-                                .frame(width: 30)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Nhóm Thông Báo")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Cộng đồng cập nhật")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                            }
-                            Spacer()
-                            Button(action: {
-                                if let url = URL(string: "https://zalo.me/g/miuatq2xhhh0tarsc3me") { UIApplication.shared.open(url) }
-                            }) {
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 14))
-                            }
-                        }
+                        
 
                         HStack {
                             Image(systemName: "hand.tap.fill")

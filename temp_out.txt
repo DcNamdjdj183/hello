@@ -1,0 +1,30 @@
+)
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Liên Hệ Admin")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 15, weight: .bold))
+                                Text("http://zalo.me/0395109314")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 12))
+                            }
+                            Spacer()
+                            Button(action: {
+                                if let url = URL(string: "http://zalo.me/0395109314") { UIApplication.shared.open(url) }
+                            }) {
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            }
+                        }
+                        
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.cyan)
+                                .font(.system(size: 20))
+                                .frame(width: 30)
+                            
+                            VStac
