@@ -290,16 +290,13 @@ struct AppDetailView: View {
                         } else if selectedTab == "Proxy" {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
                                                         InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
-                                "\(folder)/AIM BODY - bật sảnh -.3105",
-                                "\(folder)/AIM DỊ TẬT - bật 40- -.3105",
-                                "\(folder)/AIM DRAG CÂN CHECK USP - bật 40- -.3105",
-                                "\(folder)/AIM HEAD - bật 40- -.3105",
-                                "\(folder)/AIM LOCK - bật 40- -.3105",
-                                "\(folder)/AIM NECK - bật 40- -.3105",
-                                "\(folder)/AIMHEAD CÂN CHECK KÈO TIỀN - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/AIMNECK CÂN CHECK KÈO TIỀN - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/ESP - AIMHEAD V2 - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/ESP - AIMNECK V1 - BẬT NGOÀI GAME -.3105"
+                                "\(folder)/AIM BODY.3105",
+                                "\(folder)/AIM BỤNG.3105",
+                                "\(folder)/AIM CHEST.3105",
+                                "\(folder)/AIM DRAG.3105",
+                                "\(folder)/AIM NECK.3105",
+                                "\(folder)/AIM ROB.3105",
+                                "\(folder)/MAGIC.3105"
                             ], appBundleId: app.bundleId)
                         } else if selectedTab == "MOD" {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
