@@ -12,7 +12,7 @@ struct SettingsView: View {
                 Section {
                     HStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("DNXTWEAKS").font(.headline)
+                            Text("THANH DO IOS").font(.headline)
                             Text(language.text("common.version", appVersion))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)

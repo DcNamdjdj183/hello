@@ -13,7 +13,7 @@ final class LicenseManager: ObservableObject {
     @Published var rememberKey = true
     @Published private(set) var remainingSeconds: Int = 0
 
-    private let service = "com.DNXTWEAKS.external-ios.activation"
+    private let service = "com.THANHDOIOS.external-ios.activation"
     private let keyAccount = "license-key"
     private let hwidAccount = "device-hwid"
     private let expiresAccount = "license-expires"

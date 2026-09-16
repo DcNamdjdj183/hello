@@ -13,7 +13,7 @@ struct ThreeOneOSFiveApp: App {
 
     init() {
         setupLogCapture()
-        log("app: DNXTWEAKS launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
+        log("app: THANH DO IOS launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
     }
 
     private var language: AppLanguage {
