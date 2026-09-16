@@ -84,22 +84,7 @@ struct LicenseActivationView: View {
                                 .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || manager.isBusy)
                                 .opacity(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.48 : 1)
 
-                                Button(action: {
-                                    if let url = URL(string: "https://getkey-dnxtweaks.pages.dev/") {
-                                        UIApplication.shared.open(url)
-                                    }
-                                }) {
-                                    HStack(spacing: 9) {
-                                        Image(systemName: "safari.fill")
-                                        Text("GET KEY")
-                                    }
-                                    .font(.system(size: 14, weight: .black, design: .rounded))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity, minHeight: 54)
-                                    .background(Color.gray.opacity(0.3), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                                }
-                                .buttonStyle(.plain)
+
 
                                 if let message = manager.message {
                                     Text(message)

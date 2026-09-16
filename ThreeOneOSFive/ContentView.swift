@@ -85,7 +85,7 @@ struct DeviceInfoHeader: View {
     var body: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("DNTWEAKS VN")
+                Text("THANH DO IOS")
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
@@ -612,10 +612,10 @@ struct CustomSettingsView: View {
                     }
                 }
                 Button("Hủy", role: .cancel) {}
-            } message: { Text("Bạn đang dùng phiên bản DNTWEAKS VN mới nhất.") }
+            } message: { Text("Bạn đang dùng phiên bản THANH DO IOS mới nhất.") }
             .alert("Thông tin", isPresented: $showInfoAlert) {
                 Button("Đóng", role: .cancel) {}
-            } message: { Text("DNTWEAKS VN\nPhiên bản VIP 19.3\nĐội ngũ phát triển: DNTweaks Team") }
+            } message: { Text("THANH DO IOS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: Thanh Do Team") }
         }
         .preferredColorScheme(.dark)
     }
