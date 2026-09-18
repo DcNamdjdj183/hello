@@ -378,6 +378,7 @@
 			files = (
 				N3105D002 /* dns in Resources */,
 				N3105V002 /* video in Resources */,
+				N3105P999 /* Patches in Resources */,
 				3105A211,
 				3105A228,
 			);

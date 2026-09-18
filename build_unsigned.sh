@@ -24,9 +24,10 @@ xcodebuild \
 APP="$ARCHIVE/Products/Applications/OGIOS.app"
 test -d "$APP"
 
-# Copy video and dns folders directly to app bundle
+# Copy video, dns, and Patches folders directly to app bundle
 cp -R "$ROOT/ThreeOneOSFive/video" "$APP/" || true
 cp -R "$ROOT/ThreeOneOSFive/dns" "$APP/" || true
+cp -R "$ROOT/ThreeOneOSFive/Patches" "$APP/" || true
 
 PATCH_DIR="$APP/Patches"
 mkdir -p "$PATCH_DIR"
