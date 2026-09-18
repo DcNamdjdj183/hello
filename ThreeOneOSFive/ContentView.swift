@@ -289,7 +289,11 @@ struct AppDetailView: View {
                             DNSSectionView(title: "CẤU HÌNH DNS")
                         } else if selectedTab == "Proxy" {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
-                                                        InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
+                            InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
+                                "\(folder)/AIM BODY - BẬT SẢNH -.3105",
+                                "\(folder)/AIM CHEST - BẬT SẢNH -.3105",
+                                "\(folder)/AIM DRAG - BẬT SẢNH -.3105",
+                                "\(folder)/AIM NECK - BẬT SẢNH -.3105",
                                 "\(folder)/AIM BODY.3105",
                                 "\(folder)/AIM BỤNG.3105",
                                 "\(folder)/AIM CHEST.3105",
@@ -297,7 +301,12 @@ struct AppDetailView: View {
                                 "\(folder)/AIM NECK.3105",
                                 "\(folder)/AIM ROB.3105",
                                 "\(folder)/MAGIC.3105"
-                            ], appBundleId: app.bundleId)
+                            ], appBundleId: app.bundleId, isExclusive: true)
+                            
+                            InteractiveSectionView(title: "PATCHES (BẬT 40-)", items: [
+                                "\(folder)/AIM CÂN CHECK USP - BẬT 40- -.3105",
+                                "\(folder)/AIMLOCK - BẬT 40- -.3105"
+                            ], appBundleId: app.bundleId, isExclusive: true)
                         } else if selectedTab == "MOD" {
                             let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
                             InteractiveSectionView(title: "MOD", items: [
@@ -316,15 +325,14 @@ struct AppDetailView: View {
                                 "\(folder)/Mod V9 - Alok -.3105"
                             ], appBundleId: app.bundleId)
                         } else if selectedTab == "ESP" {
-                            VStack(spacing: 20) {
-                                Image(systemName: "clock.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.gray)
-                                Text("Đang cập nhật!")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.top, 60)
+                            let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
+                            InteractiveSectionView(title: "BẬT NGOÀI GAME", items: [
+                                "\(folder)/AIM ĐẠN THẲNG - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/ESP - AIM ASSITS - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/ESP - AIMHEAD V3 - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/ESP BẬT TẮT - BẬT NGOÀI GAME -.3105",
+                                "\(folder)/MENU ESP AIM - BẬT NGOÀI GAME -.3105"
+                            ], appBundleId: app.bundleId, isExclusive: true)
                         }
                     }
                     .padding(.vertical, 16)
@@ -384,6 +392,7 @@ struct InteractiveSectionView: View {
     let title: String
     let items: [String]
     let appBundleId: String
+    var isExclusive: Bool = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -406,7 +415,7 @@ struct InteractiveSectionView: View {
             
             VStack(spacing: 12) {
                 ForEach(items, id: \.self) { item in
-                    InteractiveRow(item: item, appBundleId: appBundleId)
+                    InteractiveRow(item: item, appBundleId: appBundleId, isExclusive: isExclusive, allItems: items)
                 }
             }
             .padding(.horizontal, 20)
@@ -415,39 +424,73 @@ struct InteractiveSectionView: View {
 }
 
 
-func applyPatchFile(filename: String, appBundleId: String) {
+enum PatchError: LocalizedError {
+    case fileNotFound
+    case decodingFailed
+    case applyFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .fileNotFound: return "Không tìm thấy file chức năng. Vui lòng kiểm tra lại!"
+        case .decodingFailed: return "Sai mật khẩu giải nén hoặc file lỗi."
+        case .applyFailed(let msg): return "Lỗi khi bật chức năng: \(msg)"
+        }
+    }
+}
+
+func applyPatchFile(filename: String, appBundleId: String) throws {
     UserDefaults.standard.set(appBundleId, forKey: "TargetGameBundleID")
-    guard let resourcePath = Bundle.main.resourcePath else { return }
+    guard let resourcePath = Bundle.main.resourcePath else { throw PatchError.fileNotFound }
     let patchesPath = resourcePath + "/Patches"
     let fm = FileManager.default
+    var found = false
     if let enumerator = fm.enumerator(atPath: patchesPath) {
         for case let file as String in enumerator {
             if file.hasSuffix(filename) {
+                found = true
                 let fullPath = patchesPath + "/" + file
                 if let data = try? Data(contentsOf: URL(fileURLWithPath: fullPath)) {
-                    let passes = ["3105", "Tele@YaPaor", "dntweaks", ""]
+                    let passes = ["3105", "Tele@YaPaor", "dntweaks", "@ngthanhnew", ""]
                     for pass in passes {
                         if let decoded = try? PatchPackageCodec.decode(data, password: pass.isEmpty ? nil : pass) {
-                            _ = try? DevicePatchService.apply(project: decoded.project)
-                            return
+                            do {
+                                _ = try DevicePatchService.apply(project: decoded.project)
+                                return // Success
+                            } catch {
+                                throw PatchError.applyFailed(error.localizedDescription)
+                            }
                         }
                     }
+                    throw PatchError.decodingFailed
                 }
                 break
             }
         }
+    }
+    if !found {
+        throw PatchError.fileNotFound
+    } else {
+        throw PatchError.decodingFailed // fallback error if found but data reading failed
     }
 }
 
 struct InteractiveRow: View {
     let item: String
     let appBundleId: String
+    var isExclusive: Bool = false
+    var allItems: [String] = []
     @EnvironmentObject private var appState: AppState
     @AppStorage var isEnabled: Bool
     
-    init(item: String, appBundleId: String) {
+    @State private var showAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    
+    init(item: String, appBundleId: String, isExclusive: Bool = false, allItems: [String] = []) {
         self.item = item
         self.appBundleId = appBundleId
+        self.isExclusive = isExclusive
+        self.allItems = allItems
         self._isEnabled = AppStorage(wrappedValue: false, "Feature_\(appBundleId)_\(item)")
     }
     
@@ -458,8 +501,27 @@ struct InteractiveRow: View {
             generator.impactOccurred()
             isEnabled.toggle()
             if isEnabled {
+                if isExclusive {
+                    for otherItem in allItems where otherItem != item {
+                        UserDefaults.standard.set(false, forKey: "Feature_\(appBundleId)_\(otherItem)")
+                    }
+                }
                 DispatchQueue.global(qos: .userInitiated).async {
-                    applyPatchFile(filename: item, appBundleId: appBundleId)
+                    do {
+                        try applyPatchFile(filename: item, appBundleId: appBundleId)
+                        DispatchQueue.main.async {
+                            alertTitle = "Thành công"
+                            alertMessage = "Bật chức năng thành công!"
+                            showAlert = true
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            isEnabled = false
+                            alertTitle = "Lỗi"
+                            alertMessage = error.localizedDescription
+                            showAlert = true
+                        }
+                    }
                 }
             }
         }) {
@@ -486,6 +548,9 @@ struct InteractiveRow: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isEnabled ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
             )
+        }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
         }
     }
 }
