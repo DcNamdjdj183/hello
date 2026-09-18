@@ -197,6 +197,7 @@
 			children = (
 				N3105D001 /* dns */,
 				N3105V001 /* video */,
+				N3105P998 /* Patches */,
 				3105A050 /* ThreeOneOSFive-Bridging-Header.h */,
 				3105A060 /* Info.plist */,
 				3105A020 /* App.swift */,
