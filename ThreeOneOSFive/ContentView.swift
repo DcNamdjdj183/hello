@@ -231,7 +231,7 @@ struct AppDetailView: View {
                     .padding(.bottom, 24)
                 
                 // Custom Tab Bar
-                if !tabs.isEmpty {
+                if tabs.count > 1 {
                 HStack(spacing: 0) {
                     ForEach(tabs, id: \.self) { tab in
                         Button(action: { selectedTab = tab }) {
@@ -614,13 +614,13 @@ struct CustomSettingsView: View {
                                 Text("Liên Hệ Admin")
                                     .foregroundColor(.white)
                                     .font(.system(size: 15, weight: .bold))
-                                Text("http://zalo.me/0846260109")
+                                Text("http://zalo.me/0395109314")
                                     .foregroundColor(.gray)
                                     .font(.system(size: 12))
                             }
                             Spacer()
                             Button(action: {
-                                if let url = URL(string: "http://zalo.me/0846260109") { UIApplication.shared.open(url) }
+                                if let url = URL(string: "http://zalo.me/0395109314") { UIApplication.shared.open(url) }
                             }) {
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
@@ -685,7 +685,7 @@ struct CustomSettingsView: View {
             } message: { Text("Bạn đang dùng phiên bản DNTWEAKS mới nhất.") }
             .alert("Thông tin", isPresented: $showInfoAlert) {
                 Button("Đóng", role: .cancel) {}
-            } message: { Text("DNTWEAKS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: Thanh Do Team") }
+            } message: { Text("DNTWEAKS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: DNTWEAKS Team") }
         }
         .preferredColorScheme(.dark)
     }

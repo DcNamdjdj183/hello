@@ -11,7 +11,7 @@ class AppLog: ObservableObject {
         DispatchQueue.main.async { self.entries.append(msg) }
     }
 }
-func log(_ msg: String) { AppLog.shared.append("[THANH DO IOS] \(msg)") }
+func log(_ msg: String) { AppLog.shared.append("[DNTWEAKS] \(msg)") }
 
 // Retain the pipe for the app's lifetime so stdout/stderr stay redirected.
 private var logCapturePipe: Pipe?
