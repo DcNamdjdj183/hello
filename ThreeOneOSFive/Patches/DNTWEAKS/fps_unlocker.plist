@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>FPS Unlocker</string>
+    <key>version</key>
+    <integer>1</integer>
+    <key>config</key>
+    <dict>
+        <key>target_fps</key>
+        <integer>120</integer>
+        <key>vsync_bypass</key>
+        <true/>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

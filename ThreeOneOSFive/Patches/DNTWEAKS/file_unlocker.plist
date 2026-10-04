@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>File Code Unlocker</string>
+    <key>version</key>
+    <integer>1</integer>
+    <key>config</key>
+    <dict>
+        <key>unlock_all_restrictions</key>
+        <true/>
+        <key>file_code_bypass</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

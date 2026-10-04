@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>Master Execution Core</string>
+    <key>version</key>
+    <integer>3</integer>
+    <key>config</key>
+    <dict>
+        <key>acp_click</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>on_com.dts.freefiremax_launcher</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>com.restore-device.launcher</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

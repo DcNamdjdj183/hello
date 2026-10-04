@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>Device Config Selector</string>
+    <key>version</key>
+    <integer>1</integer>
+    <key>config</key>
+    <dict>
+        <key>com.accept_devices_conf_seclect_sync</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>device_spoof</key>
+        <true/>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

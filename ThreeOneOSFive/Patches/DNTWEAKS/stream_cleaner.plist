@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>Data Stream Cleaner</string>
+    <key>version</key>
+    <integer>1</integer>
+    <key>config</key>
+    <dict>
+        <key>stream_filter</key>
+        <string>$WRITE_REGULATOR_DATA$</string>
+        <key>auto_clean</key>
+        <true/>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

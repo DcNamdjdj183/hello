@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>feature</key>
+    <string>High Performance Power Mode</string>
+    <key>version</key>
+    <integer>1</integer>
+    <key>config</key>
+    <dict>
+        <key>power_saving_disable</key>
+        <true/>
+        <key>unlimited_draw</key>
+        <true/>
+        <key>DucNam</key>
+        <true/>
+    </dict>
+</dict>
+</plist>

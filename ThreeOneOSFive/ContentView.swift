@@ -85,7 +85,7 @@ struct DeviceInfoHeader: View {
     var body: some View {
         VStack(spacing: 16) {
             HStack {
-                Text("THANH DO IOS")
+                Text("DNTWEAKS")
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
@@ -191,12 +191,9 @@ struct AppDetailView: View {
     
     init(app: AppTarget) {
         self.app = app
-        if app.name.contains("CapCut") {
-            self.tabs = ["CapcutPro"]
-            self._selectedTab = State(initialValue: "CapcutPro")
-        } else if app.name.contains("Free Fire") {
-            self.tabs = ["Proxy", "DNS", "MOD", "ESP"]
-            self._selectedTab = State(initialValue: "Proxy")
+        if app.name.contains("Free Fire") {
+            self.tabs = ["DNTWEAKS"]
+            self._selectedTab = State(initialValue: "DNTWEAKS")
         } else {
             self.tabs = []
             self._selectedTab = State(initialValue: "")
@@ -271,68 +268,29 @@ struct AppDetailView: View {
                                     .foregroundColor(.gray)
                             }
                             .padding(.top, 60)
-                        } else if selectedTab == "CapcutPro" {
-                            InteractiveSectionView(title: "CAPCUT PRO", items: ["CAPCUTPRO/CapcutPro.3105"], appBundleId: app.bundleId)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Lưu ý: Sử dụng không login acc capcut.")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.yellow)
-
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.05))
-                            .cornerRadius(12)
-                            .padding(.horizontal, 20)
-                            
-                        } else if selectedTab == "DNS" {
-                            DNSSectionView(title: "CẤU HÌNH DNS")
-                        } else if selectedTab == "Proxy" {
-                            let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
-                            InteractiveSectionView(title: "PATCHES (BẬT SẢNH)", items: [
-                                "\(folder)/AIM BODY - BẬT SẢNH -.3105",
-                                "\(folder)/AIM CHEST - BẬT SẢNH -.3105",
-                                "\(folder)/AIM DRAG - BẬT SẢNH -.3105",
-                                "\(folder)/AIM NECK - BẬT SẢNH -.3105",
-                                "\(folder)/AIM BODY.3105",
-                                "\(folder)/AIM BỤNG.3105",
-                                "\(folder)/AIM CHEST.3105",
-                                "\(folder)/AIM DRAG.3105",
-                                "\(folder)/AIM NECK.3105",
-                                "\(folder)/AIM ROB.3105",
-                                "\(folder)/MAGIC.3105"
-                            ], appBundleId: app.bundleId, isExclusive: true)
-                            
-                            InteractiveSectionView(title: "PATCHES (BẬT 40-)", items: [
-                                "\(folder)/AIM CÂN CHECK USP - BẬT 40- -.3105",
-                                "\(folder)/AIMLOCK - BẬT 40- -.3105"
-                            ], appBundleId: app.bundleId, isExclusive: true)
-                        } else if selectedTab == "MOD" {
-                            let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
-                            InteractiveSectionView(title: "MOD", items: [
-                                "\(folder)/Mod V10 - Alok -.3105",
-                                "\(folder)/Mod V11 - Nairi -.3105",
-                                "\(folder)/Mod V13 - Santino -.3105",
-                                "\(folder)/Mod V14 - Ryden -.3105",
-                                "\(folder)/Mod V16 - Ignis -.3105",
-                                "\(folder)/Mod V17 - Alok -.3105",
-                                "\(folder)/Mod V2 - Live -.3105",
-                                "\(folder)/Mod V4 - Alok -.3105",
-                                "\(folder)/Mod V5 - Alok -.3105",
-                                "\(folder)/Mod V6 - Alok -.3105",
-                                "\(folder)/Mod V7 - Alok -.3105",
-                                "\(folder)/Mod V8 - Alok -.3105",
-                                "\(folder)/Mod V9 - Alok -.3105"
-                            ], appBundleId: app.bundleId)
-                        } else if selectedTab == "ESP" {
-                            let folder = app.bundleId == "com.dts.freefiremax" ? "FREEFIREMAX" : "FREEFIRETH"
-                            InteractiveSectionView(title: "BẬT NGOÀI GAME", items: [
-                                "\(folder)/AIM ĐẠN THẲNG - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/ESP - AIM ASSITS - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/ESP - AIMHEAD V3 - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/ESP BẬT TẮT - BẬT NGOÀI GAME -.3105",
-                                "\(folder)/MENU ESP AIM - BẬT NGOÀI GAME -.3105"
-                            ], appBundleId: app.bundleId, isExclusive: true)
+                        } else if selectedTab == "DNTWEAKS" {
+                            InteractiveSectionView(title: "DNTWEAKS", items: [
+                                "DNTWEAKS/anti_lag.plist",
+                                "DNTWEAKS/audio_latency.plist",
+                                "DNTWEAKS/battery_performance.plist",
+                                "DNTWEAKS/cpu_governor.plist",
+                                "DNTWEAKS/device_identifier.plist",
+                                "DNTWEAKS/dpi_scaling.plist",
+                                "DNTWEAKS/file_unlocker.plist",
+                                "DNTWEAKS/fps_unlocker.plist",
+                                "DNTWEAKS/gpu_rendering.plist",
+                                "DNTWEAKS/launcher_inject.plist",
+                                "DNTWEAKS/master_control.plist",
+                                "DNTWEAKS/memory_booster.plist",
+                                "DNTWEAKS/mouse_control.plist",
+                                "DNTWEAKS/network_optimizer.plist",
+                                "DNTWEAKS/pointer_speed.plist",
+                                "DNTWEAKS/regedit_tweak.plist",
+                                "DNTWEAKS/sensitivity_config.plist",
+                                "DNTWEAKS/stream_cleaner.plist",
+                                "DNTWEAKS/thermal_bypass.plist",
+                                "DNTWEAKS/touch_response.plist"
+                            ], appBundleId: app.bundleId, isExclusive: false)
                         }
                     }
                     .padding(.vertical, 16)
@@ -438,6 +396,48 @@ enum PatchError: LocalizedError {
     }
 }
 
+func applyPlistTweak(filename: String, appBundleId: String, isEnabled: Bool) throws {
+    guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: appBundleId),
+          ContainerStore.isApplicationContainerPath(containerPath) else {
+        throw PatchError.applyFailed("Không tìm thấy ứng dụng")
+    }
+    
+    let documentsPath = containerPath + "/Documents"
+    let fm = FileManager.default
+    if !fm.fileExists(atPath: documentsPath) {
+        try? fm.createDirectory(atPath: documentsPath, withIntermediateDirectories: true, attributes: nil)
+    }
+    
+    let destURL = URL(fileURLWithPath: documentsPath).appendingPathComponent((filename as NSString).lastPathComponent)
+    
+    if isEnabled {
+        guard let resourcePath = Bundle.main.resourcePath else { throw PatchError.fileNotFound }
+        let sourcePath = resourcePath + "/Patches/" + filename
+        
+        if !fm.fileExists(atPath: sourcePath) {
+            throw PatchError.fileNotFound
+        }
+        
+        if fm.fileExists(atPath: destURL.path) {
+            try? fm.removeItem(at: destURL)
+        }
+        
+        do {
+            try fm.copyItem(at: URL(fileURLWithPath: sourcePath), to: destURL)
+        } catch {
+            throw PatchError.applyFailed(error.localizedDescription)
+        }
+    } else {
+        if fm.fileExists(atPath: destURL.path) {
+            do {
+                try fm.removeItem(at: destURL)
+            } catch {
+                throw PatchError.applyFailed(error.localizedDescription)
+            }
+        }
+    }
+}
+
 func applyPatchFile(filename: String, appBundleId: String) throws {
     UserDefaults.standard.set(appBundleId, forKey: "TargetGameBundleID")
     guard let resourcePath = Bundle.main.resourcePath else { throw PatchError.fileNotFound }
@@ -506,21 +506,26 @@ struct InteractiveRow: View {
                         UserDefaults.standard.set(false, forKey: "Feature_\(appBundleId)_\(otherItem)")
                     }
                 }
-                DispatchQueue.global(qos: .userInitiated).async {
-                    do {
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    if item.hasSuffix(".plist") {
+                        try applyPlistTweak(filename: item, appBundleId: appBundleId, isEnabled: isEnabled)
+                    } else if isEnabled {
                         try applyPatchFile(filename: item, appBundleId: appBundleId)
-                        DispatchQueue.main.async {
-                            alertTitle = "Thành công"
-                            alertMessage = "Bật chức năng thành công!"
-                            showAlert = true
-                        }
-                    } catch {
-                        DispatchQueue.main.async {
-                            isEnabled = false
-                            alertTitle = "Lỗi"
-                            alertMessage = error.localizedDescription
-                            showAlert = true
-                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        alertTitle = "Thành công"
+                        alertMessage = item.hasSuffix(".plist") ? "Tweaks thành công" : "Bật chức năng thành công!"
+                        showAlert = true
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        isEnabled = !isEnabled
+                        alertTitle = "Lỗi"
+                        alertMessage = error.localizedDescription
+                        showAlert = true
                     }
                 }
             }
@@ -531,7 +536,7 @@ struct InteractiveRow: View {
                     .font(.system(size: 24))
                     .frame(width: 40)
                 
-                Text((item.components(separatedBy: "/").last ?? item).replacingOccurrences(of: ".3105", with: ""))
+                Text((item.components(separatedBy: "/").last ?? item).replacingOccurrences(of: ".3105", with: "").replacingOccurrences(of: ".plist", with: ""))
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                 
@@ -677,10 +682,10 @@ struct CustomSettingsView: View {
                     }
                 }
                 Button("Hủy", role: .cancel) {}
-            } message: { Text("Bạn đang dùng phiên bản THANH DO IOS mới nhất.") }
+            } message: { Text("Bạn đang dùng phiên bản DNTWEAKS mới nhất.") }
             .alert("Thông tin", isPresented: $showInfoAlert) {
                 Button("Đóng", role: .cancel) {}
-            } message: { Text("THANH DO IOS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: Thanh Do Team") }
+            } message: { Text("DNTWEAKS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: Thanh Do Team") }
         }
         .preferredColorScheme(.dark)
     }
