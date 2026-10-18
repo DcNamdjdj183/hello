@@ -4,6 +4,7 @@ import UIKit
 @main
 struct ThreeOneOSFiveApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var licenseManager = LicenseManager()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
     @StateObject private var patchStore = PatchProjectStore()
@@ -36,6 +37,7 @@ struct ThreeOneOSFiveApp: App {
             ZStack {
                 ContentView()
                     .environmentObject(appState)
+                    .environmentObject(licenseManager)
                     .environmentObject(patchDraftCoordinator)
                     .environmentObject(fileOperationCoordinator)
                     .environmentObject(patchStore)
@@ -91,7 +93,13 @@ struct ThreeOneOSFiveApp: App {
                 appState.detectSupport()
             }
             .onOpenURL { url in
-                patchDraftCoordinator.presentImport(url)
+                if url.isFileURL && url.pathExtension.lowercased() == "3105" {
+                    if let data = try? Data(contentsOf: url) {
+                        _ = patchStore.importPackage(data: data)
+                    }
+                } else {
+                    patchDraftCoordinator.presentImport(url)
+                }
             }
         }
     }

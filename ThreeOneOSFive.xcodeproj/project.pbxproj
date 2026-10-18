@@ -1,4 +1,4 @@
-// !UTF8*0
+﻿// !UTF8*0
 {
 	archiveVersion = 1;
 	classes = {
@@ -666,3 +666,4 @@
 	};
 	rootObject = 3105A900;
 }
+

@@ -24,6 +24,12 @@ xcodebuild \
 APP="$ARCHIVE/Products/Applications/3105.app"
 test -d "$APP"
 
+# Copy dns folder directly to app bundle if present
+if [ -d "$ROOT/ThreeOneOSFive/dns" ]; then
+  mkdir -p "$APP/dns"
+  cp -R "$ROOT/ThreeOneOSFive/dns/"* "$APP/dns/" 2>/dev/null || true
+fi
+
 # Copy Patches folder directly to app bundle if present
 if [ -d "$ROOT/ThreeOneOSFive/Patches" ]; then
   mkdir -p "$APP/Patches"
