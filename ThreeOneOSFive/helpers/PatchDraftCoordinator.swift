@@ -17,7 +17,7 @@ enum PatchImportRoute {
 
     static func resolve(_ incomingURL: URL) -> PatchImportSource {
         if incomingURL.isFileURL {
-            return incomingURL.pathExtension.lowercased() == "OGIOS"
+            return incomingURL.pathExtension.lowercased() == "3105"
                 ? .file(incomingURL)
                 : .invalid
         }

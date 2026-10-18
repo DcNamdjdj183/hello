@@ -5,13 +5,8 @@ import Security
 
 enum PatchPackageCodec {
     private static let magic = Data("3105PATCH\0".utf8)
-    static let latestSchemaVersion = 100
+    static let latestSchemaVersion = 3
     private static let minimumSchemaVersion = 1
-
-    // Built-in resources are encrypted at rest. This value is only used by the
-    // application to unlock its bundled resources; imported packages still
-    // require the user-supplied password.
-    static let bundledResourcePassword = String(decoding: [120,84,111,112,49,45,69,120,116,101,114,110,97,108,45,73,110,116,101,114,110,97,108,45,80,97,116,99,104,45,75,101,121,45,50,48,50,54], as: UTF8.self)
 
     private struct Envelope: Codable {
         let schemaVersion: Int
@@ -39,7 +34,7 @@ enum PatchPackageCodec {
         try encode(
             project: project,
             password: password,
-            schemaVersion: 2, // Hardcoded to 2 for backward compatibility
+            schemaVersion: latestSchemaVersion,
             kdfIterations: kdfIterations
         )
     }
@@ -57,6 +52,19 @@ enum PatchPackageCodec {
         )
     }
 
+    static func encodeLegacyV2(
+        project: PatchProject,
+        password: String?,
+        kdfIterations: Int = PatchPackageLimits.defaultKDFIterations
+    ) throws -> EncodedPatchPackage {
+        try encode(
+            project: project,
+            password: password,
+            schemaVersion: 2,
+            kdfIterations: kdfIterations
+        )
+    }
+
     private static func encode(
         project: PatchProject,
         password: String?,
@@ -69,6 +77,12 @@ enum PatchPackageCodec {
         }
         let contentKey = try randomData(count: 32)
         let protected = !(password ?? "").isEmpty
+        guard !project.isPrivate || protected else {
+            throw PatchPackageError.privatePatchRequiresPassword
+        }
+        guard !project.isPrivate || schemaVersion >= 3 else {
+            throw PatchPackageError.unsupportedVersion
+        }
         let salt: Data?
         let iterations: Int?
         let wrappedKey: Data?
@@ -196,6 +210,12 @@ enum PatchPackageCodec {
         guard (minimumSchemaVersion...latestSchemaVersion).contains(schemaVersion) else {
             throw PatchPackageError.unsupportedVersion
         }
+        guard !project.isPrivate || oldEnvelope.isPasswordProtected else {
+            throw PatchPackageError.privatePatchRequiresPassword
+        }
+        guard !project.isPrivate || schemaVersion >= 3 else {
+            throw PatchPackageError.unsupportedVersion
+        }
         let envelope = try makeEnvelope(
             project: project,
             schemaVersion: schemaVersion,
@@ -266,6 +286,10 @@ enum PatchPackageCodec {
         guard payload.project.id == envelope.packageID else {
             throw PatchPackageError.invalidPasswordOrCorruptedPackage
         }
+        guard !payload.project.isPrivate
+                || (envelope.schemaVersion >= 3 && envelope.isPasswordProtected) else {
+            throw PatchPackageError.invalidPasswordOrCorruptedPackage
+        }
         try validate(payload.project)
         guard payload.replacementDigests.count == payload.project.rules.count else {
             throw PatchPackageError.invalidPasswordOrCorruptedPackage
@@ -281,8 +305,12 @@ enum PatchPackageCodec {
 
     static func validate(_ project: PatchProject) throws {
         let name = project.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let author = project.author.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty,
               name.utf8.count <= 120,
+              author == project.author,
+              author.utf8.count <= PatchPackageLimits.maximumAuthorBytes,
+              !author.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains),
               !project.allBundleIdentifiers.isEmpty else {
             throw PatchPackageError.invalidProject
         }

@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$ROOT/build"
-ARCHIVE="$BUILD_DIR/HYperRegedit-original-identity.xcarchive"
-IPA="$BUILD_DIR/HYper-Regedit-Key-Enabled-unsigned.ipa"
+ARCHIVE="$BUILD_DIR/3105.xcarchive"
+IPA="$BUILD_DIR/3105-unsigned.ipa"
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
@@ -12,7 +12,7 @@ command -v xcodebuild >/dev/null || { echo 'xcodebuild is required on macOS' >&2
 
 xcodebuild \
   -project "$ROOT/ThreeOneOSFive.xcodeproj" \
-  -scheme OGIOS \
+  -scheme 3105 \
   -configuration Release \
   -sdk iphoneos \
   -archivePath "$ARCHIVE" \
@@ -21,22 +21,16 @@ xcodebuild \
   CODE_SIGN_IDENTITY='' \
   archive
 
-APP="$ARCHIVE/Products/Applications/OGIOS.app"
+APP="$ARCHIVE/Products/Applications/3105.app"
 test -d "$APP"
 
-# Copy video, dns, and Patches folders directly to app bundle
-cp -R "$ROOT/ThreeOneOSFive/video" "$APP/" || true
-cp -R "$ROOT/ThreeOneOSFive/dns" "$APP/" || true
-cp -R "$ROOT/ThreeOneOSFive/Patches" "$APP/" || true
+# Copy Patches folder directly to app bundle if present
+if [ -d "$ROOT/ThreeOneOSFive/Patches" ]; then
+  mkdir -p "$APP/Patches"
+  cp -R "$ROOT/ThreeOneOSFive/Patches/"* "$APP/Patches/" 2>/dev/null || true
+fi
 
-PATCH_DIR="$APP/Patches"
-mkdir -p "$PATCH_DIR"
-for package in "$APP"/*.3105; do
-  [ -e "$package" ] || continue
-  mv "$package" "$PATCH_DIR/"
-done
-
-/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable OGIOS" "$APP/Info.plist" || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable 3105" "$APP/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" "$APP/Info.plist" || true
 mkdir -p "$BUILD_DIR/Payload"
 cp -R "$APP" "$BUILD_DIR/Payload/"

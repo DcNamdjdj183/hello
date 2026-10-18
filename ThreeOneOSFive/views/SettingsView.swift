@@ -5,14 +5,19 @@ struct SettingsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+    @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
+    @AppStorage(FeatureVisibility.developerModeStorageKey)
+    private var developerModeEnabled = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     HStack(spacing: 14) {
+                        AppLogo()
+
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("DNTWEAKS").font(.headline)
+                            Text("3105").font(.headline)
                             Text(language.text("common.version", appVersion))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -29,6 +34,41 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
+                }
+
+                Section {
+                    Toggle(isOn: $cleanerEnabled) {
+                        Label(language.text("tab.cleaner"), systemImage: "sparkles")
+                    }
+                    Toggle(isOn: $developerModeEnabled) {
+                        Label(
+                            language.text("settings.developer_mode"),
+                            systemImage: "hammer.fill"
+                        )
+                    }
+                } header: {
+                    Text(language.text("dashboard.features"))
+                } footer: {
+                    Text(language.text("settings.developer_mode_footer"))
+                }
+
+                if WallpaperFeatureSupportPolicy.isSupported(
+                    major: AppInfo.versionTuple.major
+                ) {
+                    Section {
+                        NavigationLink {
+                            WallpaperResetSettingsView()
+                        } label: {
+                            Label(
+                                language.text("wallpaper.reset"),
+                                systemImage: "arrow.counterclockwise"
+                            )
+                        }
+                    } header: {
+                        Text(language.text("tab.wallpapers"))
+                    } footer: {
+                        Text(language.text("wallpaper.reset_settings_footer"))
+                    }
                 }
 
                 Section(language.text("common.device")) {
@@ -62,10 +102,48 @@ struct SettingsView: View {
                     Text(language.text("settings.supported_versions_footer"))
                 }
 
+                Section(language.text("settings.social_media")) {
+                    creditsRow(
+                        name: "GitHub",
+                        role: language.text("social.github_role"),
+                        url: "https://github.com/YangJiiii/3105"
+                    )
+                    creditsRow(
+                        name: "Cộng Đồng IOSVN",
+                        role: language.text("social.iosvn_role"),
+                        url: "https://t.me/ioscrackvn"
+                    )
+                }
+
+                Section(language.text("settings.credits")) {
+                    creditsRow(
+                        name: "YangJiii",
+                        role: language.text("credit.yangjiii"),
+                        url: "https://x.com/duongduong0908"
+                    )
+                    creditsRow(
+                        name: "0xjohnnydev",
+                        role: language.text("credit.filzaslop"),
+                        url: "https://github.com/0xjohnnydev/FilzaSlop"
+                    )
+                    creditsRow(
+                        name: "LeminLimez",
+                        role: language.text("credit.pocket_poster"),
+                        url: "https://github.com/leminlimez/Pocket-Poster"
+                    )
+                    creditsRow(
+                        name: "CrazyMind90",
+                        role: language.text("credit.sandbox_escape"),
+                        url: "https://github.com/CrazyMind90"
+                    )
+                    creditsRow(
+                        name: "forcequitOS",
+                        role: language.text("credit.forcequit"),
+                        url: "https://github.com/forcequitOS"
+                    )
+                }
             }
             .tint(AppTheme.accent)
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.pageBackground)
             .navigationTitle(language.text("settings.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

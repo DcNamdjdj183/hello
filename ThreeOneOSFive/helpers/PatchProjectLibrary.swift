@@ -5,27 +5,39 @@ struct PatchLibraryItem: Identifiable {
     var project: PatchProject?
     var contentKey: Data?
     var packageURL: URL
+    let isAuthorCopy: Bool
+    let origin: PatchPackageOrigin?
 
     var id: UUID { summary.packageID }
     var isLocked: Bool { project == nil }
-    var displayName: String {
-        let filename = packageURL.deletingPathExtension().lastPathComponent
-        if filename.hasPrefix("OGIOS File (") {
-            return filename
-        }
-        return project?.name ?? filename
+    var canInspectContents: Bool {
+        guard let project else { return false }
+        return PatchProjectAccessPolicy.canInspectContents(
+            project: project,
+            isAuthorCopy: isAuthorCopy
+        )
     }
     var workspaceURL: URL? {
-        PatchWorkspaceService.workspaceURL(projectID: id)
+        guard canInspectContents else { return nil }
+        return PatchWorkspaceService.workspaceURL(projectID: id)
     }
 }
 
 struct PatchPasswordRequest: Identifiable {
     let summary: PatchPackageSummary
+    let origin: PatchPackageOrigin?
     var id: UUID { summary.packageID }
+
+    init(summary: PatchPackageSummary, origin: PatchPackageOrigin? = nil) {
+        self.summary = summary
+        self.origin = origin
+    }
 }
 
 enum PatchProjectLibrary {
+    private static let authorCopiesDirectoryName = ".AuthorCopies"
+    private static let originsDirectoryName = ".Origins"
+
     static func packageRootURL(fileManager: FileManager = .default) throws -> URL {
         let base = try fileManager.url(
             for: .applicationSupportDirectory,
@@ -45,40 +57,6 @@ enum PatchProjectLibrary {
         return root
     }
 
-    static func installBundledPackagesIfNeeded(
-        bundle: Bundle = .main,
-        fileManager: FileManager = .default
-    ) {
-        guard let root = try? packageRootURL(fileManager: fileManager) else {
-            return
-        }
-
-        // Xcode may flatten folder references into the app bundle. Resolve both
-        // the intended Patches subdirectory and the flattened bundle root so
-        // standalone builds remain self-contained across packaging layouts.
-        let nestedURLs = bundle.urls(forResourcesWithExtension: "3105", subdirectory: "Patches") ?? []
-        let flattenedURLs = bundle.urls(forResourcesWithExtension: "3105", subdirectory: nil) ?? []
-        var seen = Set<String>()
-        let bundledURLs = (nestedURLs + flattenedURLs).filter { seen.insert($0.standardizedFileURL.path).inserted }
-
-        for sourceURL in bundledURLs {
-            let destinationURL = root.appendingPathComponent(sourceURL.lastPathComponent)
-            if fileManager.fileExists(atPath: destinationURL.path) {
-                let destSize = (try? fileManager.attributesOfItem(atPath: destinationURL.path)[.size] as? NSNumber)?.int64Value ?? 0
-                let sourceSize = (try? fileManager.attributesOfItem(atPath: sourceURL.path)[.size] as? NSNumber)?.int64Value ?? -1
-                if destSize == sourceSize { continue }
-                try? fileManager.removeItem(at: destinationURL)
-            }
-            do {
-                let data = try Data(contentsOf: sourceURL, options: .mappedIfSafe)
-                _ = try PatchPackageCodec.inspect(data)
-                try data.write(to: destinationURL, options: [.atomic, .completeFileProtection])
-            } catch {
-                log("patch: skipped bundled package \(sourceURL.lastPathComponent): \(error)")
-            }
-        }
-    }
-
     static func load(fileManager: FileManager = .default) -> [PatchLibraryItem] {
         guard let root = try? packageRootURL(fileManager: fileManager),
               let urls = try? fileManager.contentsOfDirectory(
@@ -96,71 +74,40 @@ enum PatchProjectLibrary {
                 if let contentKey = try PatchKeyStore.load(for: summary) {
                     decoded = try PatchPackageCodec.decode(data, contentKey: contentKey)
                 } else if summary.isPasswordProtected {
-                    var loaded: DecodedPatchPackage? = nil
-                    for pwd in [PatchPackageCodec.bundledResourcePassword, "Tele@YaPaor"] {
-                        if let b = try? PatchPackageCodec.decode(data, password: pwd) {
-                            loaded = b
-                            break
-                        }
-                    }
-                    if let bundled = loaded {
-                        try PatchKeyStore.store(bundled.contentKey, for: summary)
-                        decoded = bundled
-                    } else {
-                        decoded = nil
-                    }
+                    decoded = nil
                 } else {
                     decoded = try PatchPackageCodec.decode(data, password: nil)
                 }
-                
-                var project = decoded?.project
-                if let p = project {
-                    let nameUpper = p.name.uppercased()
-                    if nameUpper.contains("AIM") || nameUpper.contains("HEAD") || nameUpper.contains("NECK") || nameUpper.contains("LOCK") || nameUpper.contains("MAGIC") || nameUpper.contains("CHEST") {
-                        var newDirectories = p.directories
-                        var newRules = p.rules
-                        for dir in p.directories {
-                            if dir.bundleID == "com.dts.freefireth" {
-                                var newDir = dir
-                                newDir.bundleID = "com.dts.freefiremax"
-                                newDir.id = UUID()
-                                newDirectories.append(newDir)
-                            } else if dir.bundleID == "com.dts.freefiremax" {
-                                var newDir = dir
-                                newDir.bundleID = "com.dts.freefireth"
-                                newDir.id = UUID()
-                                newDirectories.append(newDir)
-                            }
-                        }
-                        for rule in p.rules {
-                            if rule.bundleID == "com.dts.freefireth" {
-                                var newRule = rule
-                                newRule.bundleID = "com.dts.freefiremax"
-                                newRule.id = UUID()
-                                newRules.append(newRule)
-                            } else if rule.bundleID == "com.dts.freefiremax" {
-                                var newRule = rule
-                                newRule.bundleID = "com.dts.freefireth"
-                                newRule.id = UUID()
-                                newRules.append(newRule)
-                            }
-                        }
-                        project?.directories = newDirectories
-                        project?.rules = newRules
-                    }
-                }
-
+                let isAuthorCopy = isAuthorCopy(
+                    packageID: summary.packageID,
+                    fileManager: fileManager
+                )
                 let item = PatchLibraryItem(
                     summary: summary,
-                    project: project,
+                    project: decoded?.project,
                     contentKey: decoded?.contentKey,
-                    packageURL: url
+                    packageURL: url,
+                    isAuthorCopy: isAuthorCopy,
+                    origin: loadOrigin(
+                        packageID: summary.packageID,
+                        fileManager: fileManager
+                    )
                 )
-                if summary.schemaVersion >= 2, let prj = project {
-                    do {
-                        _ = try PatchWorkspaceService.ensureWorkspace(for: prj)
-                    } catch {
-                        log("patch: workspace unavailable for \(prj.id.uuidString)")
+                if summary.schemaVersion >= 2, let project = decoded?.project {
+                    if PatchProjectAccessPolicy.shouldMaterializeWorkspace(
+                        project: project,
+                        isAuthorCopy: isAuthorCopy
+                    ) {
+                        do {
+                            _ = try PatchWorkspaceService.ensureWorkspace(for: project)
+                        } catch {
+                            log("patch: workspace unavailable for \(project.id.uuidString)")
+                        }
+                    } else {
+                        try? PatchWorkspaceService.deleteWorkspace(
+                            projectID: project.id,
+                            fileManager: fileManager
+                        )
                     }
                 }
                 byID[summary.packageID] = item
@@ -207,16 +154,83 @@ enum PatchProjectLibrary {
         return destination
     }
 
+    static func markAsAuthorCopy(
+        packageID: UUID,
+        fileManager: FileManager = .default
+    ) throws {
+        let root = try authorCopiesRootURL(fileManager: fileManager)
+        try Data().write(
+            to: root.appendingPathComponent(packageID.uuidString),
+            options: [.atomic, .completeFileProtection]
+        )
+    }
+
+    static func isAuthorCopy(
+        packageID: UUID,
+        fileManager: FileManager = .default
+    ) -> Bool {
+        guard let root = try? authorCopiesRootURL(fileManager: fileManager) else {
+            return false
+        }
+        return fileManager.fileExists(
+            atPath: root.appendingPathComponent(packageID.uuidString).path
+        )
+    }
+
+    static func overlappingTargetPath(
+        in project: PatchProject,
+        excludingPackageID: UUID,
+        fileManager: FileManager = .default
+    ) -> String? {
+        var occupied = Set<String>()
+        for item in load(fileManager: fileManager) where item.id != excludingPackageID {
+            guard let other = item.project else { continue }
+            for rule in other.rules {
+                occupied.insert(rule.bundleID + "\0" + rule.relativePath)
+            }
+        }
+        for rule in project.rules {
+            let key = rule.bundleID + "\0" + rule.relativePath
+            if occupied.contains(key) {
+                return rule.bundleID + "/" + rule.relativePath
+            }
+        }
+        return nil
+    }
+
     static func installImportedPackage(
         data: Data,
         decoded: DecodedPatchPackage,
         summary: PatchPackageSummary,
         existingURL: URL?,
+        origin: PatchPackageOrigin? = nil,
         fileManager: FileManager = .default
     ) throws {
+        let authorCopy = isAuthorCopy(
+            packageID: summary.packageID,
+            fileManager: fileManager
+        )
+        if let occupiedPath = overlappingTargetPath(
+            in: decoded.project,
+            excludingPackageID: summary.packageID,
+            fileManager: fileManager
+        ) {
+            if decoded.project.isPrivate, !authorCopy {
+                throw PatchPackageError.privateOperationFailed
+            }
+            throw PatchPackageError.targetOccupied(occupiedPath)
+        }
         let previousData = try existingURL.map { try readPackage(at: $0) }
+        let originURL = try originFileURL(
+            packageID: summary.packageID,
+            fileManager: fileManager
+        )
+        let previousOriginData = try? Data(contentsOf: originURL)
         var savedURL: URL?
         do {
+            if let origin {
+                try saveOrigin(origin, to: originURL)
+            }
             savedURL = try save(
                 data: data,
                 projectName: decoded.project.name,
@@ -224,10 +238,20 @@ enum PatchProjectLibrary {
                 fileManager: fileManager
             )
             if summary.schemaVersion >= 2 {
-                _ = try PatchWorkspaceService.replaceWorkspace(
-                    with: decoded.project,
-                    fileManager: fileManager
-                )
+                if PatchProjectAccessPolicy.shouldMaterializeWorkspace(
+                    project: decoded.project,
+                    isAuthorCopy: authorCopy
+                ) {
+                    _ = try PatchWorkspaceService.replaceWorkspace(
+                        with: decoded.project,
+                        fileManager: fileManager
+                    )
+                } else {
+                    try PatchWorkspaceService.deleteWorkspace(
+                        projectID: decoded.project.id,
+                        fileManager: fileManager
+                    )
+                }
             } else {
                 try? PatchWorkspaceService.deleteWorkspace(
                     projectID: decoded.project.id,
@@ -243,16 +267,44 @@ enum PatchProjectLibrary {
             } else if let savedURL, fileManager.fileExists(atPath: savedURL.path) {
                 try? fileManager.removeItem(at: savedURL)
             }
+            if let previousOriginData {
+                try? previousOriginData.write(
+                    to: originURL,
+                    options: [.atomic, .completeFileProtection]
+                )
+            } else if origin != nil, fileManager.fileExists(atPath: originURL.path) {
+                try? fileManager.removeItem(at: originURL)
+            }
             throw error
         }
     }
 
     static func delete(_ item: PatchLibraryItem, fileManager: FileManager = .default) throws {
+        let backupRoot = try backupRootURL(fileManager: fileManager)
+        guard PatchTransaction.latestReceipt(
+            projectID: item.id,
+            backupRoot: backupRoot,
+            fileManager: fileManager
+        ) == nil else {
+            throw PatchPackageError.activePatchCannotBeDeleted
+        }
         if fileManager.fileExists(atPath: item.packageURL.path) {
             try fileManager.removeItem(at: item.packageURL)
         }
         try? PatchWorkspaceService.deleteWorkspace(projectID: item.id, fileManager: fileManager)
         try? PatchKeyStore.delete(for: item.summary)
+        if let originURL = try? originFileURL(
+            packageID: item.id,
+            fileManager: fileManager
+        ), fileManager.fileExists(atPath: originURL.path) {
+            try? fileManager.removeItem(at: originURL)
+        }
+        if let marker = try? authorCopyMarkerURL(
+            packageID: item.id,
+            fileManager: fileManager
+        ), fileManager.fileExists(atPath: marker.path) {
+            try? fileManager.removeItem(at: marker)
+        }
     }
 
     static func synchronizeWorkspace(
@@ -260,6 +312,7 @@ enum PatchProjectLibrary {
         fileManager: FileManager = .default
     ) throws -> PatchProject {
         guard item.summary.schemaVersion >= 2,
+              item.canInspectContents,
               let baseProject = item.project,
               let contentKey = item.contentKey else {
             throw PatchPackageError.invalidProject
@@ -296,5 +349,63 @@ enum PatchProjectLibrary {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .prefix(80)
         return result.isEmpty ? "Patch" : String(result)
+    }
+
+    private static func authorCopiesRootURL(
+        fileManager: FileManager
+    ) throws -> URL {
+        let root = try packageRootURL(fileManager: fileManager)
+            .appendingPathComponent(authorCopiesDirectoryName, isDirectory: true)
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        return root
+    }
+
+    private static func authorCopyMarkerURL(
+        packageID: UUID,
+        fileManager: FileManager
+    ) throws -> URL {
+        try authorCopiesRootURL(fileManager: fileManager)
+            .appendingPathComponent(packageID.uuidString)
+    }
+
+    private static func originsRootURL(fileManager: FileManager) throws -> URL {
+        let root = try packageRootURL(fileManager: fileManager)
+            .appendingPathComponent(originsDirectoryName, isDirectory: true)
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        return root
+    }
+
+    private static func originFileURL(
+        packageID: UUID,
+        fileManager: FileManager
+    ) throws -> URL {
+        try originsRootURL(fileManager: fileManager)
+            .appendingPathComponent(packageID.uuidString)
+            .appendingPathExtension("plist")
+    }
+
+    private static func loadOrigin(
+        packageID: UUID,
+        fileManager: FileManager
+    ) -> PatchPackageOrigin? {
+        guard let url = try? originFileURL(
+            packageID: packageID,
+            fileManager: fileManager
+        ), let data = try? Data(contentsOf: url) else {
+            return nil
+        }
+        return try? PropertyListDecoder().decode(PatchPackageOrigin.self, from: data)
+    }
+
+    private static func saveOrigin(
+        _ origin: PatchPackageOrigin,
+        to url: URL
+    ) throws {
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        try encoder.encode(origin).write(
+            to: url,
+            options: [.atomic, .completeFileProtection]
+        )
     }
 }

@@ -1,957 +1,243 @@
-import UIKit
 import SwiftUI
-import SystemConfiguration
-
-struct AppTarget: Identifiable {
-    let id = UUID()
-    let name: String
-    let bundleId: String
-    let iconName: String
-}
-
-let mockApps: [AppTarget] = [
-    AppTarget(name: "Free Fire", bundleId: "com.dts.freefireth", iconName: "icon_ffth"),
-    AppTarget(name: "Free Fire MAX", bundleId: "com.dts.freefiremax", iconName: "icon_ffmax"),
-    AppTarget(name: "PUBG Mobile", bundleId: "com.vng.pubgmobile", iconName: "icon_pubg"),
-    AppTarget(name: "Liên Quân Mobile", bundleId: "com.garena.game.kgvn", iconName: "icon_lq"),
-    AppTarget(name: "CapCut", bundleId: "com.lemon.lvoverseas", iconName: "icon_capcut"),
-
-]
+import UIKit
 
 struct ContentView: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var licenseManager: LicenseManager
+    @Environment(\.appLanguage) private var language
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
-    @EnvironmentObject private var fileOperationCoordinator: FileOperationCoordinator
-
+    @EnvironmentObject private var patchStore: PatchProjectStore
+    @EnvironmentObject private var repositoryStore: PackageRepositoryStore
+    @AppStorage(FeatureVisibility.developerModeStorageKey)
+    private var developerModeEnabled = false
+    @State private var tabNavigation: AppTabNavigationState
     @State private var showSettings = false
-    
+    @State private var showLogs = false
+
+    init() {
+#if targetEnvironment(simulator)
+        let arguments = ProcessInfo.processInfo.arguments
+        let initialTab: Int
+        if arguments.contains("--simulate-new-tab") {
+            initialTab = 1
+        } else if arguments.contains("--simulate-sources-tab") {
+            initialTab = 2
+        } else if arguments.contains("--simulate-installed-tab")
+                    || arguments.contains("--simulate-patch-tab")
+                    || arguments.contains("--simulate-wallpaper-tab") {
+            initialTab = 3
+        } else if arguments.contains("--simulate-files-tab") {
+            initialTab = 4
+        } else if arguments.contains("--simulate-search-tab") {
+            initialTab = 5
+        } else {
+            initialTab = 0
+        }
+        _tabNavigation = State(initialValue: AppTabNavigationState(selectedTab: initialTab))
+        _showSettings = State(
+            initialValue: arguments.contains("--simulate-settings")
+        )
+#else
+        _tabNavigation = State(initialValue: AppTabNavigationState())
+#endif
+    }
+
     var body: some View {
         Group {
-            if !licenseManager.isActive {
-                LicenseActivationView(manager: licenseManager)
+            if horizontalSizeClass == .regular {
+                regularLayout
             } else {
-                mainContent
+                compactLayout
             }
         }
-    }
-    
-    var mainContent: some View {
-        NavigationView {
-            ZStack {
-                Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    DeviceInfoHeader(showSettings: $showSettings)
-                        .padding(.top, 10)
-                    
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            KeyStatusCard()
-                                .padding(.bottom, 8)
-                            KernelStatusCard()
-                                .padding(.bottom, 8)
-                            Text("QUẢN LÝ APP")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 20)
-                            
-                            ForEach(mockApps) { app in
-                                NavigationLink(destination: AppDetailView(app: app)) {
-                                    AppCardView(app: app)
-                                }
-                            }
-                        }
-                        .padding(.bottom, 30)
-                    }
-                }
-            }
-            .navigationBarHidden(true)
-        .navigationBarTitle("", displayMode: .inline)
+        .tint(AppTheme.accent)
+        .imageScale(.small)
+        .onChange(of: patchDraftCoordinator.request?.id) { requestID in
+            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
         }
-        .navigationViewStyle(.stack)
-        .sheet(isPresented: $showSettings) {
-            CustomSettingsView()
+        .onChange(of: patchDraftCoordinator.importRequest?.id) { requestID in
+            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
         }
-        .preferredColorScheme(.dark)
-    }
-}
-
-struct DeviceInfoHeader: View {
-    @Binding var showSettings: Bool
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("DNTWEAKS")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text("VIP 19.3")
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(6)
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Button(action: { showSettings = true }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.gray)
-                        .padding(8)
-                        .background(Color.white.opacity(0.05))
-                        .clipShape(Circle())
-                }
-            }
-            
-            HStack {
-                DeviceInfoItem(title: "Thiết Bị", value: UIDevice.current.model)
-                Spacer()
-                DeviceInfoItem(title: "Hệ Điều Hành", value: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)")
-                Spacer()
-                DeviceInfoItem(title: "Dung Lượng Trống", value: freeDiskSpace())
-            }
-            .padding(16)
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(16)
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
-struct DeviceInfoItem: View {
-    let title: String
-    let value: String
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.gray)
-            Text(value)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white)
-        }
-    }
-}
-
-struct AppCardView: View {
-    let app: AppTarget
-    var body: some View {
-        HStack(spacing: 16) {
-            Image(app.iconName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 50, height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(app.name)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                Text(app.bundleId)
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
-            }
-            
-            Spacer()
-            
-            Text("MỞ APP")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.cyan)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.05))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
-                )
-        }
-        .padding(16)
-        .background(Color.white.opacity(0.03))
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
-        )
-        .padding(.horizontal, 20)
-    }
-}
-
-struct AppDetailView: View {
-    let app: AppTarget
-    @Environment(\.presentationMode) var presentationMode
-    @State private var selectedTab: String
-    
-    let tabs: [String]
-    
-    init(app: AppTarget) {
-        self.app = app
-        if app.name.contains("Free Fire") {
-            self.tabs = ["DNTWEAKS"]
-            self._selectedTab = State(initialValue: "DNTWEAKS")
-        } else {
-            self.tabs = []
-            self._selectedTab = State(initialValue: "")
-        }
-    }
-    
-    var body: some View {
-        ZStack {
-            Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button(action: { presentationMode.wrappedValue.dismiss() }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("Back")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundColor(.cyan)
-                    }
-                    Spacer()
-                    Text(app.name)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
-                    Spacer()
-                    Color.clear.frame(width: 70)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                
-                // Top App Card
-                AppCardView(app: app)
-                    .padding(.bottom, 24)
-                
-                // Custom Tab Bar
-                if tabs.count > 1 {
-                HStack(spacing: 0) {
-                    ForEach(tabs, id: \.self) { tab in
-                        Button(action: { selectedTab = tab }) {
-                            VStack(spacing: 12) {
-                                Image(systemName: iconForTab(tab))
-                                    .font(.system(size: 20))
-                                Text(tab)
-                                    .font(.system(size: 12, weight: .bold))
-                                
-                                Rectangle()
-                                    .fill(selectedTab == tab ? Color.cyan : Color.clear)
-                                    .frame(height: 3)
-                                    .cornerRadius(1.5)
-                            }
-                            .foregroundColor(selectedTab == tab ? .cyan : .gray)
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-                }
-                
-                // Content
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if tabs.isEmpty {
-                            VStack(spacing: 20) {
-                                Image(systemName: "clock.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.gray)
-                                Text("Đang cập nhật!")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.gray)
-                            }
-                            .padding(.top, 60)
-                        } else if selectedTab == "DNTWEAKS" {
-                            InteractiveSectionView(title: "DNTWEAKS", items: [
-                                "DNTWEAKS/anti_lag.plist",
-                                "DNTWEAKS/audio_latency.plist",
-                                "DNTWEAKS/battery_performance.plist",
-                                "DNTWEAKS/cpu_governor.plist",
-                                "DNTWEAKS/device_identifier.plist",
-                                "DNTWEAKS/dpi_scaling.plist",
-                                "DNTWEAKS/file_unlocker.plist",
-                                "DNTWEAKS/fps_unlocker.plist",
-                                "DNTWEAKS/gpu_rendering.plist",
-                                "DNTWEAKS/launcher_inject.plist",
-                                "DNTWEAKS/master_control.plist",
-                                "DNTWEAKS/memory_booster.plist",
-                                "DNTWEAKS/mouse_control.plist",
-                                "DNTWEAKS/network_optimizer.plist",
-                                "DNTWEAKS/pointer_speed.plist",
-                                "DNTWEAKS/regedit_tweak.plist",
-                                "DNTWEAKS/sensitivity_config.plist",
-                                "DNTWEAKS/stream_cleaner.plist",
-                                "DNTWEAKS/thermal_bypass.plist",
-                                "DNTWEAKS/touch_response.plist"
-                            ], appBundleId: app.bundleId, isExclusive: false)
-                        }
-                    }
-                    .padding(.vertical, 16)
-                }
-                
-                // Bottom Fixed Section (Not floating over content)
-                VStack(spacing: 12) {
-                    Text("Bản V1 - HỖ TRỢ TEST \(app.name) Khởi Chạy Sớm")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.gray)
-                    
-                    Button(action: {
-                        _ = openApplicationForBundleID(app.bundleId)
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 16))
-                            Text("MỞ GAME")
-                                .font(.system(size: 16, weight: .black))
-                        }
-                        .foregroundColor(.cyan)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.white.opacity(0.05))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.cyan.opacity(0.6), lineWidth: 1.5)
-                        )
-                        .cornerRadius(16)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
-                .background(Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea(edges: .bottom))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .ignoresSafeArea(.all, edges: .top)
-            .padding(.top, 44) // Fix Navigation Bar gap
-        }
-        .navigationBarHidden(true)
-        .navigationBarTitle("", displayMode: .inline)
-    }
-    
-    func iconForTab(_ tab: String) -> String {
-        switch tab {
-        case "Proxy": return "network"
-        case "DNS": return "server.rack"
-        case "Chams": return "person.fill.viewfinder"
-        case "CapcutPro": return "star.fill"
-        case "ESP": return "eye.fill"
-        default: return "circle"
-        }
-    }
-}
-
-struct InteractiveSectionView: View {
-    let title: String
-    let items: [String]
-    let appBundleId: String
-    var isExclusive: Bool = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Rectangle()
-                    .fill(Color.cyan)
-                    .frame(width: 3, height: 16)
-                    .cornerRadius(1.5)
-                
-                Text(title)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Image(systemName: "ellipsis")
-                    .foregroundColor(.gray)
-            }
-            .padding(.horizontal, 24)
-            
-            VStack(spacing: 12) {
-                ForEach(items, id: \.self) { item in
-                    InteractiveRow(item: item, appBundleId: appBundleId, isExclusive: isExclusive, allItems: items)
-                }
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-}
-
-
-enum PatchError: LocalizedError {
-    case fileNotFound
-    case decodingFailed
-    case applyFailed(String)
-    
-    var errorDescription: String? {
-        switch self {
-        case .fileNotFound: return "Không tìm thấy file chức năng. Vui lòng kiểm tra lại!"
-        case .decodingFailed: return "Sai mật khẩu giải nén hoặc file lỗi."
-        case .applyFailed(let msg): return "Lỗi khi bật chức năng: \(msg)"
-        }
-    }
-}
-
-func applyPlistTweak(filename: String, appBundleId: String, isEnabled: Bool) throws {
-    guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: appBundleId),
-          ContainerStore.isApplicationContainerPath(containerPath) else {
-        throw PatchError.applyFailed("Không tìm thấy ứng dụng")
-    }
-    
-    let documentsPath = containerPath + "/Documents"
-    let fm = FileManager.default
-    if !fm.fileExists(atPath: documentsPath) {
-        try? fm.createDirectory(atPath: documentsPath, withIntermediateDirectories: true, attributes: nil)
-    }
-    
-    let destURL = URL(fileURLWithPath: documentsPath).appendingPathComponent((filename as NSString).lastPathComponent)
-    
-    if isEnabled {
-        guard let resourcePath = Bundle.main.resourcePath else { throw PatchError.fileNotFound }
-        let sourcePath = resourcePath + "/Patches/" + filename
-        
-        if !fm.fileExists(atPath: sourcePath) {
-            throw PatchError.fileNotFound
-        }
-        
-        if fm.fileExists(atPath: destURL.path) {
-            try? fm.removeItem(at: destURL)
-        }
-        
-        do {
-            try fm.copyItem(at: URL(fileURLWithPath: sourcePath), to: destURL)
-        } catch {
-            throw PatchError.applyFailed(error.localizedDescription)
-        }
-    } else {
-        if fm.fileExists(atPath: destURL.path) {
-            do {
-                try fm.removeItem(at: destURL)
-            } catch {
-                throw PatchError.applyFailed(error.localizedDescription)
-            }
-        }
-    }
-}
-
-func applyPatchFile(filename: String, appBundleId: String) throws {
-    UserDefaults.standard.set(appBundleId, forKey: "TargetGameBundleID")
-    guard let resourcePath = Bundle.main.resourcePath else { throw PatchError.fileNotFound }
-    let patchesPath = resourcePath + "/Patches"
-    let fm = FileManager.default
-    var found = false
-    if let enumerator = fm.enumerator(atPath: patchesPath) {
-        for case let file as String in enumerator {
-            if file.hasSuffix(filename) {
-                found = true
-                let fullPath = patchesPath + "/" + file
-                if let data = try? Data(contentsOf: URL(fileURLWithPath: fullPath)) {
-                    let passes = ["3105", "Tele@YaPaor", "dntweaks", "@ngthanhnew", ""]
-                    for pass in passes {
-                        if let decoded = try? PatchPackageCodec.decode(data, password: pass.isEmpty ? nil : pass) {
-                            do {
-                                _ = try DevicePatchService.apply(project: decoded.project)
-                                return // Success
-                            } catch {
-                                throw PatchError.applyFailed(error.localizedDescription)
-                            }
-                        }
-                    }
-                    throw PatchError.decodingFailed
-                }
-                break
-            }
-        }
-    }
-    if !found {
-        throw PatchError.fileNotFound
-    } else {
-        throw PatchError.decodingFailed // fallback error if found but data reading failed
-    }
-}
-
-struct InteractiveRow: View {
-    let item: String
-    let appBundleId: String
-    var isExclusive: Bool = false
-    var allItems: [String] = []
-    @EnvironmentObject private var appState: AppState
-    @AppStorage var isEnabled: Bool
-    
-    @State private var showAlert = false
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-    
-    init(item: String, appBundleId: String, isExclusive: Bool = false, allItems: [String] = []) {
-        self.item = item
-        self.appBundleId = appBundleId
-        self.isExclusive = isExclusive
-        self.allItems = allItems
-        self._isEnabled = AppStorage(wrappedValue: false, "Feature_\(appBundleId)_\(item)")
-    }
-    
-    var body: some View {
-        Button(action: {
-            guard appState.exploitStatus.isSuccess else { return }
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            isEnabled.toggle()
-            if isEnabled {
-                if isExclusive {
-                    for otherItem in allItems where otherItem != item {
-                        UserDefaults.standard.set(false, forKey: "Feature_\(appBundleId)_\(otherItem)")
-                    }
-                }
-            }
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    if item.hasSuffix(".plist") {
-                        try applyPlistTweak(filename: item, appBundleId: appBundleId, isEnabled: isEnabled)
-                    } else if isEnabled {
-                        try applyPatchFile(filename: item, appBundleId: appBundleId)
-                    }
-                    
-                    DispatchQueue.main.async {
-                        alertTitle = "Thành công"
-                        alertMessage = item.hasSuffix(".plist") ? "Tweaks thành công" : "Bật chức năng thành công!"
-                        showAlert = true
-                    }
-                } catch {
-                    DispatchQueue.main.async {
-                        isEnabled = !isEnabled
-                        alertTitle = "Lỗi"
-                        alertMessage = error.localizedDescription
-                        showAlert = true
-                    }
-                }
-            }
-        }) {
-            HStack(spacing: 16) {
-                Image(systemName: "shield.fill")
-                    .foregroundColor(.cyan)
-                    .font(.system(size: 24))
-                    .frame(width: 40)
-                
-                Text((item.components(separatedBy: "/").last ?? item).replacingOccurrences(of: ".3105", with: "").replacingOccurrences(of: ".plist", with: ""))
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isEnabled ? .green : .gray.opacity(0.5))
-                    .font(.system(size: 24))
-            }
-            .padding()
-            .background(Color.white.opacity(0.05))
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isEnabled ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
-            )
-        }
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-        }
-    }
-}
-
-
-struct CustomSettingsView: View {
-    @Environment(\.presentationMode) var presentationMode
-    @EnvironmentObject private var licenseManager: LicenseManager
-    @AppStorage("AppTouchPointerEnabled") private var touchEnabled = true
-    @State private var showLanguageAlert = false
-    @State private var showUpdateAlert = false
-    @State private var showInfoAlert = false
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                Color(red: 0.07, green: 0.07, blue: 0.1).ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 16) {
-                        Button(action: { showLanguageAlert = true }) {
-                            SettingsRow(icon: "globe", title: "Ngôn Ngữ", subtitle: "English", hasArrow: true)
-                        }
-                        
-                        Button(action: { showUpdateAlert = true }) {
-                            SettingsRow(icon: "arrow.triangle.2.circlepath", title: "Kiểm Tra Cập Nhật", subtitle: "Phiên bản mới nhất", hasArrow: true)
-                        }
-                        
-                        Button(action: { clearCache() }) {
-                            SettingsRow(icon: "trash", title: "Xoá Dữ Liệu Đệm", subtitle: "Làm nhẹ app", hasArrow: true)
-                        }
-                        
-                        Button(action: { resetSettings() }) {
-                            SettingsRow(icon: "gearshape.2", title: "Khôi Phục Cài Đặt", subtitle: "Khởi động lại app & Xoá tuỳ chỉnh", hasArrow: true)
-                        }
-                        
-                        Button(action: { showInfoAlert = true }) {
-                            SettingsRow(icon: "info.circle", title: "Thông Tin Ứng Dụng", subtitle: "Phiên bản: 19.3", hasArrow: true)
-                        }
-                        
-                        Button(action: {
-                            licenseManager.deactivate()
-                            presentationMode.wrappedValue.dismiss()
-                        }) {
-                            SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Đăng Xuất", subtitle: "Thay đổi Key", hasArrow: false)
-                        }
-                        
-                        
-                        HStack {
-                            Image(systemName: "person.crop.circle.badge.plus")
-                                .foregroundColor(.cyan)
-                                .font(.system(size: 20))
-                                .frame(width: 30)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Liên Hệ Admin")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("http://zalo.me/0395109314")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                            }
-                            Spacer()
-                            Button(action: {
-                                if let url = URL(string: "http://zalo.me/0395109314") { UIApplication.shared.open(url) }
-                            }) {
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 14))
-                            }
-                        }
-                        
-                        
-
-                        HStack {
-                            Image(systemName: "hand.tap.fill")
-                                .foregroundColor(.cyan)
-                                .font(.system(size: 20))
-                                .frame(width: 30)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Chạm Màn Hình")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 15, weight: .bold))
-                                Text("Hiển thị con trỏ")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                            }
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: $touchEnabled)
-                                .labelsHidden()
-                                .tint(.cyan)
-                        }
-                        .padding(16)
-                        .background(Color.white.opacity(0.05))
-                        .cornerRadius(16)
-                    }
-                    .padding(20)
-                }
-            }
-            .navigationTitle("Cài Đặt")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Đóng") { presentationMode.wrappedValue.dismiss() }
-                        .foregroundColor(.cyan)
-                        .font(.system(size: 16, weight: .bold))
-                }
-            }
-            .alert("Ngôn ngữ (Language)", isPresented: $showLanguageAlert) {
-                Button("Mở Cài đặt iOS") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Hủy", role: .cancel) {}
-            }
-            .alert("Kiểm tra cập nhật", isPresented: $showUpdateAlert) {
-                Button("Mở trang chủ") {
-                    if let url = URL(string: "https://github.com/DcNamdjdj183/hello") {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Hủy", role: .cancel) {}
-            } message: { Text("Bạn đang dùng phiên bản DNTWEAKS mới nhất.") }
-            .alert("Thông tin", isPresented: $showInfoAlert) {
-                Button("Đóng", role: .cancel) {}
-            } message: { Text("DNTWEAKS\nPhiên bản VIP 19.3\nĐội ngũ phát triển: DNTWEAKS Team") }
-        }
-        .preferredColorScheme(.dark)
-    }
-    
-    private func clearCache() {
-        let temp = FileManager.default.temporaryDirectory
-        if let items = try? FileManager.default.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil) {
-            for item in items {
-                try? FileManager.default.removeItem(at: item)
-            }
-        }
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-    }
-    
-    private func resetSettings() {
-        if let bundleID = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleID)
-            UserDefaults.standard.synchronize()
-        }
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            exit(0)
-        }
-    }
-}
-
-
-struct SettingsRow: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let hasArrow: Bool
-    
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(.white)
-                .font(.system(size: 20))
-                .frame(width: 30)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .foregroundColor(.white)
-                    .font(.system(size: 15, weight: .bold))
-                Text(subtitle)
-                    .foregroundColor(.gray)
-                    .font(.system(size: 12))
-            }
-            
-            Spacer()
-            
-            if hasArrow {
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 12, weight: .bold))
-            }
-        }
-        .padding(16)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(16)
-    }
-}
-
-
-struct AnimatedHyperBackdrop: View {
-    @State private var animate = false
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color.black.ignoresSafeArea()
-                Circle()
-                    .fill(Color.cyan.opacity(0.12))
-                    .frame(width: 280, height: 280)
-                    .blur(radius: 70)
-                    .offset(x: animate ? 120 : -120, y: -proxy.size.height * 0.23)
-                Circle()
-                    .fill(Color.purple.opacity(0.08))
-                    .frame(width: 260, height: 260)
-                    .blur(radius: 80)
-                    .offset(x: animate ? -100 : 100, y: proxy.size.height * 0.22)
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) { animate = true }
-            }
-        }
-        .ignoresSafeArea()
-    }
-}
-
-struct DNSSectionView: View {
-    let title: String
-    @State private var dnsURL: URL?
-    @ObservedObject private var server = ProfileServer.shared
-    @State private var isVPNActive = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Rectangle()
-                    .fill(Color.cyan)
-                    .frame(width: 3, height: 16)
-                    .cornerRadius(1.5)
-                
-                Text(title)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            
-            // DNS 4.0 Action
-            Button(action: installDNS) {
-                HStack(spacing: 16) {
-                    Image(systemName: "shield.fill")
-                        .foregroundColor(.cyan)
-                        .font(.system(size: 24))
-                        .frame(width: 40)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("DNS AntiBan 4.0")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                        Text(isVPNActive ? "Đang hoạt động (VPN Bật)" : "Bấm để cài & bật")
-                            .font(.system(size: 10))
-                            .foregroundColor(isVPNActive ? .green : .gray)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: isVPNActive ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isVPNActive ? .green : .gray.opacity(0.5))
-                        .font(.system(size: 24))
-                }
-                .padding()
-                .background(Color.white.opacity(0.05))
-                .cornerRadius(16)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(isVPNActive ? Color.green.opacity(0.3) : Color.cyan.opacity(0.2), lineWidth: 1)
-                )
-            }
-            .padding(.horizontal, 20)
+        .onChange(of: developerModeEnabled) { _ in
+            tabNavigation.reconcileSelection(with: featureVisibility)
         }
         .onAppear {
-            let fm = FileManager.default
-            if let bundlePath = Bundle.main.resourcePath {
-                let dnsPath = bundlePath + "/dns"
-                if let files = try? fm.contentsOfDirectory(atPath: dnsPath) {
-                    if let profile = files.first(where: { $0.hasSuffix(".mobileconfig") }) {
-                        dnsURL = URL(fileURLWithPath: dnsPath + "/" + profile)
-                        server.startServer(with: dnsURL!)
+            tabNavigation.reconcileSelection(with: featureVisibility)
+        }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showLogs) { LogView() }
+        .patchStorePresentation(patchStore)
+        .repositoryStorePresentation(repositoryStore, patchStore: patchStore)
+    }
+
+    private var compactLayout: some View {
+        TabView(selection: tabSelection) {
+            ForEach(featureVisibility.visibleSections) { section in
+                sectionContent(section)
+                    .tabItem {
+                        CompactTabLabel(
+                            title: language.text(section.titleKey),
+                            systemImage: section.systemImage
+                        )
                     }
-                }
-            }
-            checkVPNStatus()
-        }
-        .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in
-            checkVPNStatus()
-        }
-    }
-    
-    private func installDNS() {
-        if let url = server.serverURL {
-            UIApplication.shared.open(url)
-        } else if let localURL = dnsURL {
-            server.startServer(with: localURL)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if let url = server.serverURL {
-                    UIApplication.shared.open(url)
-                }
+                    .tag(section.rawValue)
             }
         }
     }
-    
-    private func checkVPNStatus() {
-        if let dict = CFNetworkCopySystemProxySettings()?.takeRetainedValue() as? [String: Any],
-           let scoped = dict["__SCOPED__"] as? [String: Any] {
-            for key in scoped.keys {
-                let lower = key.lowercased()
-                if lower.contains("tap") || lower.contains("tun") || lower.contains("ppp") || lower.contains("ipsec") {
-                    self.isVPNActive = true
-                    return
+
+    private var regularLayout: some View {
+        NavigationSplitView {
+            List {
+                ForEach(featureVisibility.visibleSections) { section in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            tabNavigation.select(section.rawValue)
+                        }
+                    } label: {
+                        Label(language.text(section.titleKey), systemImage: section.systemImage)
+                            .fontWeight(section.rawValue == tabNavigation.selectedTab ? .semibold : .regular)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(
+                        section.rawValue == tabNavigation.selectedTab
+                            ? AppTheme.accent.opacity(0.14)
+                            : Color.clear
+                    )
+                    .accessibilityAddTraits(
+                        section.rawValue == tabNavigation.selectedTab ? .isSelected : []
+                    )
                 }
             }
+            .navigationTitle("3105")
+            .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
+        } detail: {
+            sectionContent(selectedVisibleSection)
+                .id(selectedVisibleSection.rawValue)
         }
-        self.isVPNActive = false
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    @ViewBuilder
+    private func sectionContent(_ section: AppSection) -> some View {
+        switch section {
+        case .home:
+            RepositoryHomeView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .new:
+            RepositoryNewView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .sources:
+            RepositorySourcesView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .installed:
+            PatchProjectsView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .files:
+            AppDataBrowserView(
+                tabSession: filesTabSession,
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .search:
+            RepositorySearchView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        }
+    }
+
+    private var tabSelection: Binding<Int> {
+        Binding(
+            get: { tabNavigation.selectedTab },
+            set: { tabNavigation.select($0) }
+        )
+    }
+
+    private var filesTabSession: Binding<FilesTabSession> {
+        Binding(
+            get: { tabNavigation.filesTabs },
+            set: { tabNavigation.setFilesTabs($0) }
+        )
+    }
+
+    private var featureVisibility: FeatureVisibility {
+        FeatureVisibility(developerModeEnabled: developerModeActive)
+    }
+
+    private var developerModeActive: Bool {
+#if targetEnvironment(simulator)
+        developerModeEnabled
+            || ProcessInfo.processInfo.arguments.contains("--simulate-developer-mode")
+            || ProcessInfo.processInfo.arguments.contains("--simulate-files-tab")
+#else
+        developerModeEnabled
+#endif
+    }
+
+    private var selectedVisibleSection: AppSection {
+        let selected = AppSection(rawValue: tabNavigation.selectedTab)
+        return selected.flatMap {
+            featureVisibility.isVisible($0) ? $0 : nil
+        } ?? .home
+    }
+
+    private func openSettings() {
+        showSettings = true
+    }
+
+    private func openLogs() {
+        showLogs = true
     }
 }
 
-struct KeyStatusCard: View {
-    @EnvironmentObject private var licenseManager: LicenseManager
+private struct CompactTabLabel: View {
+    let title: String
+    let systemImage: String
+
+    @ViewBuilder
     var body: some View {
-        HStack {
-            Image(systemName: "timer")
-                .foregroundColor(.purple)
-            Text("Thời gian sử dụng:")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-            Spacer()
-            Text(formattedTime)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(licenseManager.remainingSeconds < 3600 ? .red : .green)
+        if let image = UIImage(
+            systemName: systemImage,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+        )?.withRenderingMode(.alwaysTemplate) {
+            Image(uiImage: image)
+        } else {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .medium))
         }
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal, 20)
-    }
-    
-    var formattedTime: String {
-        let h = licenseManager.remainingSeconds / 3600
-        let m = (licenseManager.remainingSeconds % 3600) / 60
-        let s = licenseManager.remainingSeconds % 60
-        return String(format: "%02d:%02d:%02d", h, m, s)
+        Text(title)
     }
 }
 
-struct KernelStatusCard: View {
-    @EnvironmentObject private var appState: AppState
-    
-    var body: some View {
-        HStack {
-            Image(systemName: "cpu")
-                .foregroundColor(appState.exploitStatus.isSuccess ? .green : .red)
-            Text("Kernel Exploit:")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-            Spacer()
-            
-            if appState.kernelExploitRunning {
-                Text("Đang chạy...")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.yellow)
-            } else if appState.exploitStatus.isSuccess {
-                Text("Active")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundColor(.green)
-            } else if appState.exploitStatus.isFailed {
-                Text("Thất bại")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.red)
-            } else {
-                Text("Đang chờ...")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.gray)
-            }
+private extension AppSection {
+    var titleKey: String {
+        switch self {
+        case .home: return "tab.home"
+        case .new: return "tab.new"
+        case .sources: return "tab.sources"
+        case .installed: return "tab.installed"
+        case .files: return "tab.files"
+        case .search: return "tab.search"
         }
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal, 20)
     }
-}
 
-func freeDiskSpace() -> String {
-    do {
-        let systemAttributes = try FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory() as String)
-        let freeSpace = (systemAttributes[FileAttributeKey.systemFreeSize] as? NSNumber)?.int64Value ?? 0
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useGB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: freeSpace)
-    } catch {
-        return "Unknown"
+    var systemImage: String {
+        switch self {
+        case .home: return "house.fill"
+        case .new: return "clock.fill"
+        case .sources: return "shippingbox.fill"
+        case .installed: return "tray.full.fill"
+        case .files: return "folder.fill"
+        case .search: return "magnifyingglass"
+        }
     }
 }
