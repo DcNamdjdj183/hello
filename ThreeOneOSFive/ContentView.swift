@@ -1600,7 +1600,7 @@ struct ExternalIOSDashboardView: View {
                                 .background(Color.cyan)
                                 .cornerRadius(4)
                         }
-                        Text("Aimlock V1-V5 & Sensitive V1-V5 Engine")
+                        Text("Aimlock V1-V5 • Sensitive V1-V5 • Regedit V1-V5 Engine")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.gray)
                     }
@@ -1613,7 +1613,7 @@ struct ExternalIOSDashboardView: View {
                     Circle()
                         .fill(manager.activePresets.isEmpty ? Color.gray : Color.green)
                         .frame(width: 7, height: 7)
-                    Text("\(manager.activePresets.count)/10 ON")
+                    Text("\(manager.activePresets.count)/15 ON")
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
                         .foregroundColor(manager.activePresets.isEmpty ? .gray : .green)
                 }
@@ -1745,88 +1745,115 @@ struct ExternalIOSDashboardView: View {
             }
             .padding(.horizontal, 20)
 
-            // CATEGORY SWITCHER: AIMLOCK V1-V5 VS SENSITIVE V1-V5
-            HStack(spacing: 10) {
+            // CATEGORY SWITCHER: AIMLOCK vs SENSITIVE vs REGEDIT
+            HStack(spacing: 8) {
+                // 1. AIMLOCK
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                         selectedSubTab = .aimlock
                     }
                 }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "scope")
-                            .font(.system(size: 13, weight: .bold))
-                        Text("🎯 AIMLOCK")
-                            .font(.system(size: 12, weight: .heavy))
-                        Text("\(manager.activeAimlockCount(for: selectedGameBundleId))/5")
+                    VStack(spacing: 3) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "scope")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("AIMLOCK")
+                                .font(.system(size: 11, weight: .heavy))
+                        }
+                        Text("\(manager.activeAimlockCount(for: selectedGameBundleId))/5 ON")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
                             .foregroundColor(selectedSubTab == .aimlock ? .black : .cyan)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(selectedSubTab == .aimlock ? Color.black.opacity(0.2) : Color.cyan.opacity(0.15))
-                            .cornerRadius(4)
                     }
                     .foregroundColor(selectedSubTab == .aimlock ? .black : .white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
+                    .padding(.vertical, 8)
                     .background(
                         Group {
                             if selectedSubTab == .aimlock {
-                                LinearGradient(
-                                    colors: [Color.cyan, Color.blue],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+                                LinearGradient(colors: [Color.cyan, Color.blue], startPoint: .leading, endPoint: .trailing)
                             } else {
                                 Color.white.opacity(0.04)
                             }
                         }
                     )
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 10)
                             .stroke(selectedSubTab == .aimlock ? Color.cyan.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
 
+                // 2. SENSITIVE
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                         selectedSubTab = .sensitive
                     }
                 }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 13, weight: .bold))
-                        Text("⚡ SENSITIVE")
-                            .font(.system(size: 12, weight: .heavy))
-                        Text("\(manager.activeSensitiveCount(for: selectedGameBundleId))/5")
+                    VStack(spacing: 3) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("SENSITIVE")
+                                .font(.system(size: 11, weight: .heavy))
+                        }
+                        Text("\(manager.activeSensitiveCount(for: selectedGameBundleId))/5 ON")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
                             .foregroundColor(selectedSubTab == .sensitive ? .black : .orange)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(selectedSubTab == .sensitive ? Color.black.opacity(0.2) : Color.orange.opacity(0.15))
-                            .cornerRadius(4)
                     }
                     .foregroundColor(selectedSubTab == .sensitive ? .black : .white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
+                    .padding(.vertical, 8)
                     .background(
                         Group {
                             if selectedSubTab == .sensitive {
-                                LinearGradient(
-                                    colors: [Color.orange, Color.red],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
+                                LinearGradient(colors: [Color.orange, Color.red], startPoint: .leading, endPoint: .trailing)
                             } else {
                                 Color.white.opacity(0.04)
                             }
                         }
                     )
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: 10)
                             .stroke(selectedSubTab == .sensitive ? Color.orange.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // 3. REGEDIT
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        selectedSubTab = .regedit
+                    }
+                }) {
+                    VStack(spacing: 3) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("REGEDIT")
+                                .font(.system(size: 11, weight: .heavy))
+                        }
+                        Text("\(manager.activeRegeditCount(for: selectedGameBundleId))/5 ON")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundColor(selectedSubTab == .regedit ? .black : .yellow)
+                    }
+                    .foregroundColor(selectedSubTab == .regedit ? .black : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        Group {
+                            if selectedSubTab == .regedit {
+                                LinearGradient(colors: [Color.yellow, Color.purple], startPoint: .leading, endPoint: .trailing)
+                            } else {
+                                Color.white.opacity(0.04)
+                            }
+                        }
+                    )
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(selectedSubTab == .regedit ? Color.yellow.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -1835,7 +1862,7 @@ struct ExternalIOSDashboardView: View {
 
             // Sub-category Quick Action Bar
             HStack {
-                Text(selectedSubTab == .aimlock ? "BỘ KHÓA TÂM AIMLOCK V1 - V5" : "BỘ ĐỘ NHẠY SENSITIVE V1 - V5")
+                Text(selectedSubTab == .aimlock ? "BỘ KHÓA TÂM AIMLOCK V1 - V5" : (selectedSubTab == .sensitive ? "BỘ ĐỘ NHẠY SENSITIVE V1 - V5" : "BỘ THANH GHI REGEDIT V1 - V5"))
                     .font(.system(size: 11, weight: .black))
                     .foregroundColor(.white)
 
@@ -1845,14 +1872,17 @@ struct ExternalIOSDashboardView: View {
                     if selectedSubTab == .aimlock {
                         manager.activateAllAimlock(for: selectedGameBundleId)
                         triggerToast("Đã bật toàn bộ Aimlock V1 - V5!")
-                    } else {
+                    } else if selectedSubTab == .sensitive {
                         manager.activateAllSensitive(for: selectedGameBundleId)
                         triggerToast("Đã bật toàn bộ Sensitive V1 - V5!")
+                    } else {
+                        manager.activateAllRegedit(for: selectedGameBundleId)
+                        triggerToast("Đã bật toàn bộ Regedit V1 - V5!")
                     }
                 }) {
                     Text("Bật Tất Cả")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(selectedSubTab == .aimlock ? .cyan : .orange)
+                        .foregroundColor(selectedSubTab == .aimlock ? .cyan : (selectedSubTab == .sensitive ? .orange : .yellow))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.white.opacity(0.06))
@@ -1863,9 +1893,12 @@ struct ExternalIOSDashboardView: View {
                     if selectedSubTab == .aimlock {
                         manager.resetAllAimlock(for: selectedGameBundleId)
                         triggerToast("Đã tắt toàn bộ Aimlock V1 - V5!")
-                    } else {
+                    } else if selectedSubTab == .sensitive {
                         manager.resetAllSensitive(for: selectedGameBundleId)
                         triggerToast("Đã tắt toàn bộ Sensitive V1 - V5!")
+                    } else {
+                        manager.resetAllRegedit(for: selectedGameBundleId)
+                        triggerToast("Đã tắt toàn bộ Regedit V1 - V5!")
                     }
                 }) {
                     Text("Tắt Hết")
@@ -1885,8 +1918,12 @@ struct ExternalIOSDashboardView: View {
                     ForEach(allAimlockPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
                     }
-                } else {
+                } else if selectedSubTab == .sensitive {
                     ForEach(allSensitivePresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
+                    }
+                } else {
+                    ForEach(allRegeditSubPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
                     }
                 }
@@ -2161,7 +2198,7 @@ struct ExternalIOSGameSectionView: View {
                     Text("EXTERNAL CHO \(app.name.uppercased())")
                         .font(.system(size: 13, weight: .black))
                         .foregroundColor(.white)
-                    Text("Aimlock: \(manager.activeAimlockCount(for: app.bundleId))/5 • Sensitive: \(manager.activeSensitiveCount(for: app.bundleId))/5")
+                    Text("Aimlock: \(manager.activeAimlockCount(for: app.bundleId))/5 • Sens: \(manager.activeSensitiveCount(for: app.bundleId))/5 • Reg: \(manager.activeRegeditCount(for: app.bundleId))/5")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.cyan)
                 }
@@ -2222,26 +2259,37 @@ struct ExternalIOSGameSectionView: View {
                 .buttonStyle(.plain)
             }
 
-            // Sub Tab Switcher: Aimlock vs Sensitive
-            HStack(spacing: 10) {
+            // Sub Tab Switcher: Aimlock vs Sensitive vs Regedit
+            HStack(spacing: 8) {
                 Button(action: { selectedSubTab = .aimlock }) {
-                    Text("🎯 AIMLOCK V1-V5")
-                        .font(.system(size: 11, weight: .heavy))
+                    Text("🎯 AIMLOCK")
+                        .font(.system(size: 10, weight: .heavy))
                         .foregroundColor(selectedSubTab == .aimlock ? .black : .white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 8)
                         .background(selectedSubTab == .aimlock ? Color.cyan : Color.white.opacity(0.05))
                         .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: { selectedSubTab = .sensitive }) {
-                    Text("⚡ SENSITIVE V1-V5")
-                        .font(.system(size: 11, weight: .heavy))
+                    Text("⚡ SENSITIVE")
+                        .font(.system(size: 10, weight: .heavy))
                         .foregroundColor(selectedSubTab == .sensitive ? .black : .white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 8)
                         .background(selectedSubTab == .sensitive ? Color.orange : Color.white.opacity(0.05))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: { selectedSubTab = .regedit }) {
+                    Text("💎 REGEDIT")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(selectedSubTab == .regedit ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(selectedSubTab == .regedit ? Color.yellow : Color.white.opacity(0.05))
                         .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
@@ -2253,8 +2301,12 @@ struct ExternalIOSGameSectionView: View {
                     ForEach(allAimlockPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: app.bundleId)
                     }
-                } else {
+                } else if selectedSubTab == .sensitive {
                     ForEach(allSensitivePresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: app.bundleId)
+                    }
+                } else {
+                    ForEach(allRegeditSubPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: app.bundleId)
                     }
                 }

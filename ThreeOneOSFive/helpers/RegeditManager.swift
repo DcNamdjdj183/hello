@@ -2,10 +2,11 @@ import Foundation
 import SwiftUI
 import UIKit
 
-// MARK: - External Category
+// MARK: - External Category (Aimlock, Sensitive, Regedit)
 enum ExternalCategory: String, CaseIterable, Identifiable {
     case aimlock = "Aimlock"
     case sensitive = "Sensitive"
+    case regedit = "Regedit"
     var id: String { rawValue }
 }
 
@@ -186,10 +187,89 @@ let allSensitivePresets: [ExternalPreset] = [
     )
 ]
 
-let allExternalPresets: [ExternalPreset] = allAimlockPresets + allSensitivePresets
+// MARK: - 5 Regedit Presets (V1 - V5)
+let allRegeditSubPresets: [ExternalPreset] = [
+    ExternalPreset(
+        id: "regedit_v1",
+        category: .regedit,
+        level: 1,
+        title: "Regedit V1",
+        subtitle: "Smooth Touch & Chống Rung Cảm Ứng",
+        description: "Tối ưu hóa bảng thanh ghi độ trễ cảm ứng màn hình, lọc nhiễu ngón tay khi rê tâm, giảm rung lắc súng.",
+        icon: "slider.horizontal.3",
+        accentColor: Color(red: 0.0, green: 0.85, blue: 0.95), // Cyan
+        defaultDelay: "0.02ms",
+        defaultSensitivity: 1.15,
+        xRatio: 1.10,
+        yRatio: 1.15,
+        tags: ["Anti-Shake", "Touch Register", "Latency Fix"]
+    ),
+    ExternalPreset(
+        id: "regedit_v2",
+        category: .regedit,
+        level: 2,
+        title: "Regedit V2",
+        subtitle: "Aim Assist Registry (Long-Range Drag)",
+        description: "Gia tốc đường vuốt tâm tầm xa qua thanh ghi tọa độ Y. Chuẩn hóa đường đạn cho súng trường và Sniper.",
+        icon: "cross.circle.fill",
+        accentColor: Color(red: 0.2, green: 0.65, blue: 1.0), // Blue
+        defaultDelay: "0.01ms",
+        defaultSensitivity: 1.30,
+        xRatio: 1.20,
+        yRatio: 1.35,
+        tags: ["Long Range", "Sniper Drag", "Register Pacing"]
+    ),
+    ExternalPreset(
+        id: "regedit_v3",
+        category: .regedit,
+        level: 3,
+        title: "Regedit V3",
+        subtitle: "Fast Drag Shot (Shotgun & SMG)",
+        description: "Thanh ghi gia tốc vuốt tâm cận chiến siêu tốc, vuốt nhẹ lên đầu (One Shot M1887/MP40). Lấy mẫu đa ngón 240Hz.",
+        icon: "wand.and.stars",
+        accentColor: Color(red: 0.65, green: 0.35, blue: 0.95), // Purple
+        defaultDelay: "0.005ms",
+        defaultSensitivity: 1.55,
+        xRatio: 1.35,
+        yRatio: 1.65,
+        tags: ["Shotgun One-Shot", "Rapid Register", "240Hz Sampling"]
+    ),
+    ExternalPreset(
+        id: "regedit_v4",
+        category: .regedit,
+        level: 4,
+        title: "Regedit V4",
+        subtitle: "Headshot Lock 100% (Ultra Hitbox Matrix)",
+        description: "Ghi đè ma trận hút Head Hitbox trong Sandbox, triệt tiêu delay cảm ứng iOS, giữ tâm ngực nhảy thẳng lên đầu.",
+        icon: "burst.fill",
+        accentColor: Color(red: 1.0, green: 0.45, blue: 0.1), // Orange
+        defaultDelay: "0.001ms",
+        defaultSensitivity: 1.80,
+        xRatio: 1.50,
+        yRatio: 1.95,
+        tags: ["Headshot 100%", "Zero Delay", "Hitbox Matrix"]
+    ),
+    ExternalPreset(
+        id: "regedit_v5",
+        category: .regedit,
+        level: 5,
+        title: "Regedit V5",
+        subtitle: "Quantum Master VIP (God Mode Aim)",
+        description: "Bản tối thượng tích hợp toàn bộ V1-V4: Siêu nhạy 120FPS ProMotion Streaming, phá vỡ giới hạn cảm ứng phần cứng.",
+        icon: "sparkles",
+        accentColor: Color(red: 1.0, green: 0.84, blue: 0.0), // Gold
+        defaultDelay: "ZERO DELAY",
+        defaultSensitivity: 2.10,
+        xRatio: 1.80,
+        yRatio: 2.30,
+        tags: ["120FPS Quantum", "God Mode", "Uncapped Touch"]
+    )
+]
+
+let allExternalPresets: [ExternalPreset] = allAimlockPresets + allSensitivePresets + allRegeditSubPresets
 let allRegeditPresets: [ExternalPreset] = allExternalPresets
 
-// MARK: - External iOS & Regedit Manager Service
+// MARK: - External iOS Manager Service
 @MainActor
 final class RegeditManager: ObservableObject {
     static let shared = RegeditManager()
@@ -311,7 +391,32 @@ final class RegeditManager: ObservableObject {
         objectWillChange.send()
     }
 
-    // Master Controls (All 10 Presets)
+    // Regedit Bulk Controls
+    func activateAllRegedit(for bundleId: String? = nil) {
+        for preset in allRegeditSubPresets {
+            let key = specificKey(presetId: preset.id, bundleId: bundleId)
+            defaults.set(true, forKey: key)
+            if bundleId == nil { activePresets.insert(preset.id) }
+            applyTarget(preset: preset, isEnabled: true, bundleId: bundleId)
+        }
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.success)
+        objectWillChange.send()
+    }
+
+    func resetAllRegedit(for bundleId: String? = nil) {
+        for preset in allRegeditSubPresets {
+            let key = specificKey(presetId: preset.id, bundleId: bundleId)
+            defaults.set(false, forKey: key)
+            if bundleId == nil { activePresets.remove(preset.id) }
+            applyTarget(preset: preset, isEnabled: false, bundleId: bundleId)
+        }
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        objectWillChange.send()
+    }
+
+    // Master Controls (All 15 Presets)
     func activateAll(for bundleId: String? = nil) {
         for preset in allExternalPresets {
             let key = specificKey(presetId: preset.id, bundleId: bundleId)
@@ -348,6 +453,10 @@ final class RegeditManager: ObservableObject {
         allSensitivePresets.filter { isEnabled(presetId: $0.id, for: bundleId) }.count
     }
 
+    func activeRegeditCount(for bundleId: String? = nil) -> Int {
+        allRegeditSubPresets.filter { isEnabled(presetId: $0.id, for: bundleId) }.count
+    }
+
     private func applyTarget(preset: ExternalPreset, isEnabled: Bool, bundleId: String?) {
         if let bundleId = bundleId {
             applyExternalToContainer(preset: preset, isEnabled: isEnabled, bundleId: bundleId)
@@ -374,7 +483,7 @@ final class RegeditManager: ObservableObject {
             let active = isEnabled(presetId: preset.id, for: bundleId)
             applyExternalToContainer(preset: preset, isEnabled: active, bundleId: bundleId)
         }
-        return (true, "Đã đồng bộ thành công cấu hình EXTERNAL IOS (Aimlock & Sensitive) vào Container của ứng dụng!")
+        return (true, "Đã đồng bộ thành công cấu hình EXTERNAL IOS (Aimlock, Sensitive & Regedit) vào Container của ứng dụng!")
     }
 
     // MARK: - Internal Tweak Injector via ContainerStore
@@ -417,7 +526,7 @@ final class RegeditManager: ObservableObject {
         } else {
             if var configDict = NSDictionary(contentsOfFile: externalConfigFile) as? [String: Any] {
                 configDict.removeValue(forKey: preset.id)
-                if configDict.keys.filter({ $0.starts(with: "aimlock_") || $0.starts(with: "sensitive_") }).isEmpty {
+                if configDict.keys.filter({ $0.starts(with: "aimlock_") || $0.starts(with: "sensitive_") || $0.starts(with: "regedit_") }).isEmpty {
                     configDict["EXTERNAL_IOS_ACTIVE"] = false
                     try? fm.removeItem(atPath: externalConfigFile)
                     try? fm.removeItem(atPath: legacyConfigFile)
