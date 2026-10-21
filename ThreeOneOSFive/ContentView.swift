@@ -37,13 +37,25 @@ struct ContentView: View {
 
     @State private var showSettings = false
     @State private var showLogs = false
+    @State private var showAppleRestartAlert = false
+    @State private var restartAlertTitle = "Yêu Cầu Khởi Động Lại"
+    @State private var restartAlertMessage = "Cần khởi động lại máy để áp dụng các thay đổi cấu hình vào bộ nhớ đệm hệ thống."
+    @State private var isSimulatingRespring = false
 
     var body: some View {
         Group {
             if !licenseManager.isActive {
                 LicenseActivationView(manager: licenseManager)
             } else {
-                mainContent
+                ZStack {
+                    mainContent
+
+                    if isSimulatingRespring {
+                        AppleRespringOverlayView()
+                            .transition(.opacity)
+                            .zIndex(999)
+                    }
+                }
             }
         }
         .preferredColorScheme(.dark)
@@ -52,6 +64,35 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showLogs) {
             LogView()
+        }
+        .alert(isPresented: $showAppleRestartAlert) {
+            Alert(
+                title: Text(restartAlertTitle),
+                message: Text(restartAlertMessage),
+                primaryButton: .destructive(Text("Khởi Động Lại Ngay")) {
+                    triggerDeviceRespring()
+                },
+                secondaryButton: .cancel(Text("Để Sau"))
+            )
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"))) { notif in
+            if let featureName = notif.object as? String {
+                restartAlertTitle = "Yêu Cầu Khởi Động Lại"
+                restartAlertMessage = "Bạn vừa kích hoạt '\(featureName)'. Để các thay đổi có hiệu lực đầy đủ trong trò chơi và bộ nhớ đệm iOS, vui lòng khởi động lại thiết bị."
+            }
+            showAppleRestartAlert = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DNTWEAKS_PerformAppleRespring"))) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isSimulatingRespring = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isSimulatingRespring = false
+                }
+                let feedback = UINotificationFeedbackGenerator()
+                feedback.notificationOccurred(.success)
+            }
         }
     }
 
@@ -102,7 +143,7 @@ struct DeviceInfoHeader: View {
                             .font(.system(size: 22, weight: .black, design: .rounded))
                             .foregroundColor(.white)
 
-                        Text("VIP 2.0")
+                        Text("EXTERNAL v2.0")
                             .font(.system(size: 10, weight: .black, design: .monospaced))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
@@ -116,7 +157,7 @@ struct DeviceInfoHeader: View {
                             .cornerRadius(6)
                             .foregroundColor(.white)
 
-                        Text("3105 CORE")
+                        Text("PRO VIP")
                             .font(.system(size: 9, weight: .bold, design: .rounded))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
@@ -125,7 +166,7 @@ struct DeviceInfoHeader: View {
                             .foregroundColor(.cyan)
                     }
 
-                    Text("Trình quản lý Patch .3105 & Tối ưu trò chơi")
+                    Text("Aimlock • Sensitive • Regedit Suite")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.gray)
                 }
@@ -135,20 +176,29 @@ struct DeviceInfoHeader: View {
                 HStack(spacing: 8) {
                     Button(action: { showLogs = true }) {
                         Image(systemName: "terminal.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.cyan)
-                            .padding(9)
+                            .padding(8)
                             .background(Color.white.opacity(0.06))
                             .clipShape(Circle())
                     }
 
                     Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(9)
-                            .background(Color.white.opacity(0.06))
-                            .clipShape(Circle())
+                        HStack(spacing: 5) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("Cài Đặt")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.08))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
                     }
                 }
             }
@@ -266,56 +316,62 @@ struct KeyStatusCard: View {
 
 struct KernelStatusCard: View {
     @EnvironmentObject private var appState: AppState
+    @State private var showRestartAlert = false
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(appState.exploitStatus.isSuccess ? Color.green.opacity(0.18) : Color.cyan.opacity(0.18))
-                    .frame(width: 42, height: 42)
+                    .fill(Color.green.opacity(0.18))
+                    .frame(width: 44, height: 44)
                 Image(systemName: "cpu")
-                    .foregroundColor(appState.exploitStatus.isSuccess ? .green : .cyan)
-                    .font(.system(size: 18))
+                    .foregroundColor(.green)
+                    .font(.system(size: 19, weight: .bold))
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("KHAI THÁC KERNEL (3105)")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.cyan)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("TÌNH TRẠNG ENGINE")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(.cyan)
 
-                Text(statusText)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.85))
+                    Text("ACTIVE")
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(4)
+                }
+
+                Text("External v2.0")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
             }
 
             Spacer()
 
-            if appState.kernelExploitRunning {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .yellow))
-            } else if !appState.exploitStatus.isSuccess && appState.kernelExploitApplicable {
-                Button(action: { appState.runKernelExploitIfNeeded() }) {
-                    Text("Kích Hoạt")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.cyan)
-                        .cornerRadius(8)
-                }
-            } else {
+            Button(action: {
+                showRestartAlert = true
+            }) {
                 HStack(spacing: 5) {
-                    Circle()
-                        .fill(appState.exploitStatus.isSuccess ? Color.green : Color.orange)
-                        .frame(width: 8, height: 8)
-                    Text(appState.exploitStatus.isSuccess ? "ACTIVE" : "STANDBY")
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .foregroundColor(appState.exploitStatus.isSuccess ? .green : .orange)
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("Khởi Động Lại")
+                        .font(.system(size: 11, weight: .bold))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(10)
+                .foregroundColor(.black)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 0.0, green: 0.9, blue: 0.8), Color.cyan],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(9)
+                .shadow(color: Color.cyan.opacity(0.3), radius: 5, x: 0, y: 2)
             }
         }
         .padding(14)
@@ -323,20 +379,18 @@ struct KernelStatusCard: View {
         .cornerRadius(18)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(appState.exploitStatus.isSuccess ? Color.green.opacity(0.25) : Color.cyan.opacity(0.2), lineWidth: 1)
+                .stroke(Color.cyan.opacity(0.25), lineWidth: 1)
         )
         .padding(.horizontal, 20)
-    }
-
-    private var statusText: String {
-        if appState.kernelExploitRunning {
-            return "Đang chạy khai thác..."
-        } else if appState.exploitStatus.isSuccess {
-            return "Kernel RW & Sandbox Bypassed"
-        } else if appState.exploitStatus.isFailed {
-            return "Thất bại, chạm để thử lại"
-        } else {
-            return "Sẵn sàng khai thác container"
+        .alert(isPresented: $showRestartAlert) {
+            Alert(
+                title: Text("Yêu Cầu Khởi Động Lại"),
+                message: Text("Khởi động lại thiết bị hoặc Respring để làm mới bộ nhớ đệm hệ thống và áp dụng đầy đủ cấu hình External v2.0?"),
+                primaryButton: .destructive(Text("Khởi Động Lại Ngay")) {
+                    triggerDeviceRespring()
+                },
+                secondaryButton: .cancel(Text("Để Sau"))
+            )
         }
     }
 }
@@ -1448,53 +1502,245 @@ struct DNSSectionView: View {
     }
 }
 
-// MARK: - Custom Settings View
+// MARK: - Apple Respring Simulation Overlay
+struct AppleRespringOverlayView: View {
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 24) {
+                Image(systemName: "applelogo")
+                    .font(.system(size: 64))
+                    .foregroundColor(.white)
+
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(1.4)
+            }
+        }
+    }
+}
+
+func triggerDeviceRespring() {
+    let feedback = UINotificationFeedbackGenerator()
+    feedback.notificationOccurred(.warning)
+    NotificationCenter.default.post(name: NSNotification.Name("DNTWEAKS_PerformAppleRespring"), object: nil)
+}
+
+// MARK: - Custom Settings View (Language, Version & System)
 struct CustomSettingsView: View {
     @Environment(\.presentationMode) private var presentationMode
     @EnvironmentObject private var licenseManager: LicenseManager
     @EnvironmentObject private var appState: AppState
 
+    @AppStorage("app_language") private var selectedLanguage: String = "vi"
+    @AppStorage("app_engine_version") private var selectedVersion: String = "v2.0_stable"
+
     @State private var showInfoAlert = false
     @State private var showCacheAlert = false
+    @State private var showUpdateAlert = false
+    @State private var showRespringConfirm = false
+
+    private let languages: [(id: String, flag: String, name: String)] = [
+        ("vi", "🇻🇳", "Tiếng Việt"),
+        ("en", "🇺🇸", "English"),
+        ("zh", "🇨🇳", "中文 (简体)")
+    ]
+
+    private let versions: [(id: String, name: String, desc: String)] = [
+        ("v2.0_stable", "External v2.0 (Ổn định)", "Bản chuẩn ổn định cho mọi thiết bị"),
+        ("v2.0_quantum", "External v2.0.1 Quantum", "Tối ưu hóa ProMotion 120Hz & Zero Latency"),
+        ("v2.0_ultralow", "External v2.0 Low-Latency", "Tăng tốc điểm chạm cảm ứng màn hình")
+    ]
 
     var body: some View {
         NavigationView {
             ZStack {
                 Color(red: 0.06, green: 0.08, blue: 0.12).ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 14) {
-                        SettingsRow(icon: "cpu", title: "Kernel Status", subtitle: appState.exploitStatus.isSuccess ? "Active" : "Chờ kích hoạt", hasArrow: false)
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        
+                        // 1. NGÔN NGỮ (LANGUAGE)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("NGÔN NGỮ (LANGUAGE)")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.cyan)
+                                .padding(.horizontal, 4)
 
-                        Button(action: { showCacheAlert = true }) {
-                            SettingsRow(icon: "trash.fill", title: "Xóa Dữ Liệu Tạm", subtitle: "Làm nhẹ bộ nhớ", hasArrow: true)
+                            VStack(spacing: 6) {
+                                ForEach(languages, id: \.id) { item in
+                                    Button(action: {
+                                        selectedLanguage = item.id
+                                        let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                        feedback.impactOccurred()
+                                    }) {
+                                        HStack(spacing: 12) {
+                                            Text(item.flag)
+                                                .font(.system(size: 20))
+                                            Text(item.name)
+                                                .font(.system(size: 14, weight: selectedLanguage == item.id ? .bold : .medium))
+                                                .foregroundColor(.white)
+                                            Spacer()
+                                            if selectedLanguage == item.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.cyan)
+                                                    .font(.system(size: 17))
+                                            }
+                                        }
+                                        .padding(14)
+                                        .background(Color.white.opacity(selectedLanguage == item.id ? 0.08 : 0.03))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(selectedLanguage == item.id ? Color.cyan.opacity(0.5) : Color.white.opacity(0.05), lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
                         }
 
-                        Button(action: { showInfoAlert = true }) {
-                            SettingsRow(icon: "info.circle.fill", title: "Thông Tin Hệ Thống", subtitle: "DNTWEAKS VIP 2.0 (3105 Engine)", hasArrow: true)
+                        // 2. PHIÊN BẢN & ENGINE (VERSION)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("PHIÊN BẢN (VERSION)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.cyan)
+
+                                Spacer()
+
+                                Text("EXTERNAL v2.0 PRO")
+                                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.cyan)
+                                    .cornerRadius(4)
+                            }
+                            .padding(.horizontal, 4)
+
+                            VStack(spacing: 6) {
+                                ForEach(versions, id: \.id) { ver in
+                                    Button(action: {
+                                        selectedVersion = ver.id
+                                        let feedback = UIImpactFeedbackGenerator(style: .medium)
+                                        feedback.impactOccurred()
+                                    }) {
+                                        HStack(spacing: 12) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(selectedVersion == ver.id ? Color.cyan.opacity(0.2) : Color.white.opacity(0.05))
+                                                    .frame(width: 32, height: 32)
+                                                Image(systemName: "bolt.shield.fill")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(selectedVersion == ver.id ? .cyan : .gray)
+                                            }
+
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(ver.name)
+                                                    .font(.system(size: 13, weight: .bold))
+                                                    .foregroundColor(.white)
+                                                Text(ver.desc)
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(.gray)
+                                            }
+
+                                            Spacer()
+
+                                            if selectedVersion == ver.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.cyan)
+                                                    .font(.system(size: 17))
+                                            }
+                                        }
+                                        .padding(12)
+                                        .background(Color.white.opacity(selectedVersion == ver.id ? 0.08 : 0.03))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(selectedVersion == ver.id ? Color.cyan.opacity(0.5) : Color.white.opacity(0.05), lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                Button(action: { showUpdateAlert = true }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "arrow.triangle.2.circlepath")
+                                        Text("Kiểm Tra Bản Cập Nhật Mới")
+                                    }
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.cyan)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 11)
+                                    .background(Color.cyan.opacity(0.12))
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .padding(.top, 4)
+                            }
                         }
 
-                        Button(action: {
-                            licenseManager.deactivate()
-                            presentationMode.wrappedValue.dismiss()
-                        }) {
-                            SettingsRow(icon: "rectangle.portrait.and.arrow.right.fill", title: "Đăng Xuất Key", subtitle: "Xóa key trên máy này", hasArrow: true)
+                        // 3. THAO TÁC HỆ THỐNG
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("HỆ THỐNG & BỘ NHỚ")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal, 4)
+
+                            VStack(spacing: 8) {
+                                Button(action: { showRespringConfirm = true }) {
+                                    SettingsRow(icon: "arrow.clockwise", title: "Khởi Động Lại / Respring", subtitle: "Làm mới bộ nhớ đệm hệ thống", hasArrow: true)
+                                }
+
+                                Button(action: { showCacheAlert = true }) {
+                                    SettingsRow(icon: "trash.fill", title: "Xóa Dữ Liệu Tạm", subtitle: "Làm nhẹ bộ nhớ sandbox", hasArrow: true)
+                                }
+
+                                Button(action: { showInfoAlert = true }) {
+                                    SettingsRow(icon: "info.circle.fill", title: "Thông Tin Hệ Thống", subtitle: "DNTWEAKS External v2.0 PRO", hasArrow: true)
+                                }
+
+                                Button(action: {
+                                    licenseManager.deactivate()
+                                    presentationMode.wrappedValue.dismiss()
+                                }) {
+                                    SettingsRow(icon: "rectangle.portrait.and.arrow.right.fill", title: "Đăng Xuất Key", subtitle: "Xóa key VIP trên máy này", hasArrow: true)
+                                }
+                            }
                         }
+
                     }
                     .padding(20)
                 }
             }
             .navigationBarTitle("Cài Đặt", displayMode: .inline)
-            .navigationBarItems(trailing: Button("Đóng") {
+            .navigationBarItems(trailing: Button("Xong") {
                 presentationMode.wrappedValue.dismiss()
             })
         }
         .preferredColorScheme(.dark)
         .alert(isPresented: $showCacheAlert) {
+            Alert(title: Text("Dọn Dẹp"), message: Text("Đã dọn dẹp sạch cache bộ nhớ đệm thành công!"), dismissButton: .default(Text("OK")))
+        }
+        .alert(isPresented: $showUpdateAlert) {
+            Alert(title: Text("Cập Nhật Phiên Bản"), message: Text("Bạn đang sử dụng phiên bản mới nhất: External v2.0 PRO VIP (Build 2026.10.21).\nKhông có bản cập nhật mới nào."), dismissButton: .default(Text("OK")))
+        }
+        .alert(isPresented: $showInfoAlert) {
+            Alert(title: Text("Thông Tin DNTWEAKS"), message: Text("External iOS v2.0 PRO VIP\nEngine: External v2.0\nKernel: Exploit Bypass OK\nTouch Sampling: 240Hz Ultra\nStatus: Lifetime VIP Active"), dismissButton: .default(Text("OK")))
+        }
+        .alert(isPresented: $showRespringConfirm) {
             Alert(
-                title: Text("Dọn Dẹp"),
-                message: Text("Đã dọn dẹp sạch cache bộ nhớ đệm thành công!"),
-                dismissButton: .default(Text("OK"))
+                title: Text("Yêu Cầu Khởi Động Lại"),
+                message: Text("Khởi động lại thiết bị hoặc Respring để làm mới bộ nhớ đệm hệ thống và áp dụng cấu hình External v2.0?"),
+                primaryButton: .destructive(Text("Khởi Động Lại Ngay")) {
+                    presentationMode.wrappedValue.dismiss()
+                    triggerDeviceRespring()
+                },
+                secondaryButton: .cancel(Text("Để Sau"))
             )
         }
     }
@@ -1869,16 +2115,24 @@ struct ExternalIOSDashboardView: View {
                 Spacer()
 
                 Button(action: {
+                    let groupName: String
                     if selectedSubTab == .aimlock {
                         manager.activateAllAimlock(for: selectedGameBundleId)
+                        groupName = "Aimlock V1 - V5"
                         triggerToast("Đã bật toàn bộ Aimlock V1 - V5!")
                     } else if selectedSubTab == .sensitive {
                         manager.activateAllSensitive(for: selectedGameBundleId)
+                        groupName = "Sensitive V1 - V5"
                         triggerToast("Đã bật toàn bộ Sensitive V1 - V5!")
                     } else {
                         manager.activateAllRegedit(for: selectedGameBundleId)
+                        groupName = "Regedit V1 - V5"
                         triggerToast("Đã bật toàn bộ Regedit V1 - V5!")
                     }
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                        object: groupName
+                    )
                 }) {
                     Text("Bật Tất Cả")
                         .font(.system(size: 10, weight: .bold))
@@ -2062,7 +2316,13 @@ struct ExternalPresetCard: View {
 
                 // Neon Toggle Switch
                 Button(action: {
-                    _ = manager.toggle(preset: preset, for: bundleId)
+                    let newState = manager.toggle(preset: preset, for: bundleId)
+                    if newState {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                            object: "\(preset.title) (V\(preset.level))"
+                        )
+                    }
                 }) {
                     ZStack {
                         Capsule()
@@ -2228,6 +2488,10 @@ struct ExternalIOSGameSectionView: View {
             HStack(spacing: 10) {
                 Button(action: {
                     manager.activateAll(for: app.bundleId)
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                        object: "Tất cả tính năng (\(app.name))"
+                    )
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
