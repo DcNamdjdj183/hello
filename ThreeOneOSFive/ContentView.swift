@@ -137,16 +137,19 @@ struct DeviceInfoHeader: View {
     @Binding var showLogs: Bool
 
     private var tierBadgeColor: (bg: Color, text: Color) {
-        switch licenseManager.tier {
-        case .all:
+        if licenseManager.allowedModules.contains("all") || licenseManager.allowedModules.count == 3 {
             return (Color.cyan.opacity(0.15), Color.cyan)
-        case .aimlock:
+        }
+        if licenseManager.allowedModules.contains("aimlock") && licenseManager.allowedModules.count == 1 {
             return (Color.cyan.opacity(0.2), Color.cyan)
-        case .sensitive:
+        }
+        if licenseManager.allowedModules.contains("sensitive") && licenseManager.allowedModules.count == 1 {
             return (Color.orange.opacity(0.2), Color.orange)
-        case .regedit:
+        }
+        if licenseManager.allowedModules.contains("regedit") && licenseManager.allowedModules.count == 1 {
             return (Color.yellow.opacity(0.2), Color.yellow)
         }
+        return (Color.purple.opacity(0.2), Color.purple)
     }
 
     var body: some View {
@@ -268,45 +271,54 @@ struct KeyStatusCard: View {
     @EnvironmentObject private var licenseManager: LicenseManager
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.purple.opacity(0.18))
-                    .frame(width: 42, height: 42)
-                Image(systemName: "crown.fill")
-                    .foregroundColor(.purple)
-                    .font(.system(size: 18))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(licenseManager.tierName)
-                        .font(.system(size: 11, weight: .bold))
+        VStack(spacing: 10) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.18))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "crown.fill")
                         .foregroundColor(.purple)
-
-                    Text("KÍCH HOẠT")
-                        .font(.system(size: 9, weight: .black))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.green.opacity(0.2))
-                        .foregroundColor(.green)
-                        .cornerRadius(4)
+                        .font(.system(size: 18))
                 }
 
-                Text("Thời gian sử dụng:")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(licenseManager.tierName)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.purple)
+
+                        Text("KÍCH HOẠT")
+                            .font(.system(size: 9, weight: .black))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.2))
+                            .foregroundColor(.green)
+                            .cornerRadius(4)
+                    }
+
+                    Text("Thời gian sử dụng:")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Spacer()
+
+                Text(formattedTime)
+                    .font(.system(size: 15, weight: .black, design: .monospaced))
+                    .foregroundColor(licenseManager.remainingSeconds < 3600 ? .red : .green)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(10)
             }
 
-            Spacer()
-
-            Text(formattedTime)
-                .font(.system(size: 16, weight: .black, design: .monospaced))
-                .foregroundColor(licenseManager.remainingSeconds < 3600 ? .red : .green)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(10)
+            // Dải huy hiệu trạng thái cấp quyền từng phân hệ
+            HStack(spacing: 6) {
+                ModulePermissionBadge(name: "AIMLOCK", isAllowed: licenseManager.canAccess(category: .aimlock), color: .cyan)
+                ModulePermissionBadge(name: "SENSITIVE", isAllowed: licenseManager.canAccess(category: .sensitive), color: .orange)
+                ModulePermissionBadge(name: "REGEDIT", isAllowed: licenseManager.canAccess(category: .regedit), color: .yellow)
+            }
         }
         .padding(14)
         .background(Color.white.opacity(0.04))
@@ -326,6 +338,31 @@ struct KeyStatusCard: View {
         let m = (licenseManager.remainingSeconds % 3600) / 60
         let s = licenseManager.remainingSeconds % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+}
+
+// MARK: - Module Permission Badge
+struct ModulePermissionBadge: View {
+    let name: String
+    let isAllowed: Bool
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: isAllowed ? "checkmark.circle.fill" : "lock.fill")
+                .font(.system(size: 9, weight: .bold))
+            Text(name)
+                .font(.system(size: 9, weight: .black))
+        }
+        .foregroundColor(isAllowed ? color : .gray.opacity(0.7))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 5)
+        .background(isAllowed ? color.opacity(0.12) : Color.white.opacity(0.03))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isAllowed ? color.opacity(0.35) : Color.white.opacity(0.06), lineWidth: 0.8)
+        )
     }
 }
 
@@ -1930,8 +1967,27 @@ struct ExternalIOSDashboardView: View {
             // Master Control Buttons
             HStack(spacing: 10) {
                 Button(action: {
-                    manager.activateAll(for: selectedGameBundleId)
-                    triggerToast("Đã bật toàn bộ External iOS cho \(currentTargetName)!")
+                    let permittedCategories = ExternalCategory.allCases.filter { licenseManager.canAccess(category: $0) }
+                    if permittedCategories.isEmpty {
+                        triggerToast("Key của bạn không có quyền kích hoạt bất kỳ phân hệ nào!")
+                        return
+                    }
+                    for cat in permittedCategories {
+                        switch cat {
+                        case .aimlock:
+                            manager.activateAllAimlock(for: selectedGameBundleId)
+                        case .sensitive:
+                            manager.activateAllSensitive(for: selectedGameBundleId)
+                        case .regedit:
+                            manager.activateAllRegedit(for: selectedGameBundleId)
+                        }
+                    }
+                    let names = permittedCategories.map { $0.rawValue }.joined(separator: ", ")
+                    triggerToast("Đã bật các phân hệ được cấp phép (\(names)) cho \(currentTargetName)!")
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                        object: "External iOS (\(names))"
+                    )
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
@@ -2310,174 +2366,218 @@ struct ExternalPresetCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header: Icon, Titles, Badges, Toggle
-            HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(preset.accentColor.opacity(isActive ? 0.25 : 0.12))
-                        .frame(width: 44, height: 44)
+        ZStack {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header: Icon, Titles, Badges, Toggle
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(preset.accentColor.opacity(isActive ? 0.25 : 0.12))
+                            .frame(width: 44, height: 44)
 
-                    Image(systemName: isPermitted ? preset.icon : "lock.fill")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundColor(isPermitted ? (isActive ? preset.accentColor : .gray) : .gray.opacity(0.6))
-                }
+                        Image(systemName: isPermitted ? preset.icon : "lock.fill")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundColor(isPermitted ? (isActive ? preset.accentColor : .gray) : .gray.opacity(0.6))
+                    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(preset.title)
-                            .font(.system(size: 15, weight: .black))
-                            .foregroundColor(isPermitted ? .white : .gray)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(preset.title)
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(isPermitted ? .white : .gray)
 
-                        Text("V\(preset.level)")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(isPermitted ? preset.accentColor : Color.gray)
-                            .cornerRadius(4)
-
-                        if !isPermitted {
-                            Text("KHÓA")
+                            Text("V\(preset.level)")
                                 .font(.system(size: 9, weight: .black))
-                                .foregroundColor(.red)
+                                .foregroundColor(.black)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
-                                .background(Color.red.opacity(0.15))
+                                .background(isPermitted ? preset.accentColor : Color.gray)
                                 .cornerRadius(4)
+
+                            if !isPermitted {
+                                Text("KHÓA")
+                                    .font(.system(size: 9, weight: .black))
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red.opacity(0.15))
+                                    .cornerRadius(4)
+                            } else {
+                                Text(preset.defaultDelay)
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(preset.accentColor)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(preset.accentColor.opacity(0.12))
+                                    .cornerRadius(4)
+                            }
+                        }
+
+                        Text(isPermitted ? preset.subtitle : "Chưa được cấp quyền trong gói key")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(isPermitted ? .gray : .red.opacity(0.8))
+                    }
+
+                    Spacer()
+
+                    // Neon Toggle Switch or Lock Badge
+                    Button(action: {
+                        guard isPermitted else {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("DNTWEAKS_TriggerTierLockedToast"),
+                                object: "Phân hệ [\(preset.category.rawValue.uppercased())] chưa được cấp quyền! Vui lòng nâng cấp gói Key."
+                            )
+                            return
+                        }
+                        let newState = manager.toggle(preset: preset, for: bundleId)
+                        if newState {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                                object: "\(preset.title) (V\(preset.level))"
+                            )
+                        }
+                    }) {
+                        if isPermitted {
+                            ZStack {
+                                Capsule()
+                                    .fill(isActive ? preset.accentColor : Color.white.opacity(0.15))
+                                    .frame(width: 48, height: 26)
+
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 22, height: 22)
+                                    .offset(x: isActive ? 11 : -11)
+                                    .shadow(color: Color.black.opacity(0.3), radius: 2)
+                            }
                         } else {
-                            Text(preset.defaultDelay)
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(preset.accentColor)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(preset.accentColor.opacity(0.12))
-                                .cornerRadius(4)
+                            HStack(spacing: 3) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 10, weight: .bold))
+                                Text("LOCK")
+                                    .font(.system(size: 9, weight: .black))
+                            }
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(8)
                         }
                     }
-
-                    Text(isPermitted ? preset.subtitle : "Cần key \(preset.category == .aimlock ? "AIMLOCK" : (preset.category == .sensitive ? "SENSITIVE" : "REGEDIT")) hoặc VIP ALL")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(isPermitted ? .gray : .red.opacity(0.8))
+                    .buttonStyle(.plain)
                 }
 
-                Spacer()
+                // Description
+                Text(preset.description)
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundColor(.white.opacity(0.75))
+                    .lineSpacing(2)
 
-                // Neon Toggle Switch or Lock Badge
-                Button(action: {
-                    guard isPermitted else {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerTierLockedToast"),
-                            object: "Key của bạn là [\(licenseManager.tierName)]. Không thể dùng mục này! Vui lòng nâng cấp key VIP ALL."
-                        )
-                        return
-                    }
-                    let newState = manager.toggle(preset: preset, for: bundleId)
-                    if newState {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                            object: "\(preset.title) (V\(preset.level))"
-                        )
-                    }
-                }) {
-                    if isPermitted {
-                        ZStack {
-                            Capsule()
-                                .fill(isActive ? preset.accentColor : Color.white.opacity(0.15))
-                                .frame(width: 48, height: 26)
-
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 22, height: 22)
-                                .offset(x: isActive ? 11 : -11)
-                                .shadow(color: Color.black.opacity(0.3), radius: 2)
-                        }
-                    } else {
-                        HStack(spacing: 3) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("LOCK")
-                                .font(.system(size: 9, weight: .black))
-                        }
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.white.opacity(0.06))
-                        .cornerRadius(8)
+                // Tags
+                HStack(spacing: 6) {
+                    ForEach(preset.tags, id: \.self) { tag in
+                        Text("#\(tag)")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(isActive ? preset.accentColor : .gray)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(isActive ? preset.accentColor.opacity(0.1) : Color.white.opacity(0.04))
+                            .cornerRadius(5)
                     }
                 }
-                .buttonStyle(.plain)
+
+                // Slider: Lock Force / Sensitivity Adjustment
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(preset.category == .aimlock ? "LỰC HÚT TÂM (LOCK INTENSITY)" : "ĐỘ NHẠY KÉO TÂM (SENSITIVITY)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.gray)
+
+                        Spacer()
+
+                        Text(String(format: "%.2fx (%.0f%%)", currentSens, currentSens * 100))
+                            .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                            .foregroundColor(preset.accentColor)
+                    }
+
+                    Slider(
+                        value: Binding(
+                            get: { self.currentSens },
+                            set: { val in
+                                if isPermitted {
+                                    manager.setSensitivity(val, presetId: preset.id, for: bundleId)
+                                }
+                            }
+                        ),
+                        in: 1.0...3.0,
+                        step: 0.05
+                    )
+                    .accentColor(preset.accentColor)
+                    .disabled(!isPermitted)
+
+                    HStack {
+                        Text("Trục X: \(String(format: "%.2fx", currentSens * preset.xRatio))")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(.gray)
+
+                        Spacer()
+
+                        Text("Trục Y (Head Lock): \(String(format: "%.2fx", currentSens * preset.yRatio))")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(preset.accentColor)
+                    }
+                }
+                .padding(10)
+                .background(Color.black.opacity(0.25))
+                .cornerRadius(10)
             }
+            .blur(radius: isPermitted ? 0 : 2.5)
+            .opacity(isPermitted ? 1.0 : 0.35)
+            .disabled(!isPermitted)
 
-            // Description
-            Text(preset.description)
-                .font(.system(size: 11, weight: .regular))
-                .foregroundColor(.white.opacity(0.75))
-                .lineSpacing(2)
+            // Khóa làm mờ Overlay hiển thị khi không được cấp quyền
+            if !isPermitted {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.black.opacity(0.55))
 
-            // Tags
-            HStack(spacing: 6) {
-                ForEach(preset.tags, id: \.self) { tag in
-                    Text("#\(tag)")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(isActive ? preset.accentColor : .gray)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(isActive ? preset.accentColor.opacity(0.1) : Color.white.opacity(0.04))
-                        .cornerRadius(5)
-                }
-            }
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.red.opacity(0.2))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.red)
+                    }
 
-            // Slider: Lock Force / Sensitivity Adjustment
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(preset.category == .aimlock ? "LỰC HÚT TÂM (LOCK INTENSITY)" : "ĐỘ NHẠY KÉO TÂM (SENSITIVITY)")
-                        .font(.system(size: 10, weight: .bold))
+                    Text("CHƯA ĐƯỢC CẤP QUYỀN")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(.white)
+                        .tracking(0.6)
+
+                    Text("Gói Key không bao gồm phân hệ \(preset.category.rawValue)")
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(.gray)
-
-                    Spacer()
-
-                    Text(String(format: "%.2fx (%.0f%%)", currentSens, currentSens * 100))
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
-                        .foregroundColor(preset.accentColor)
+                        .multilineTextAlignment(.center)
                 }
-
-                Slider(
-                    value: Binding(
-                        get: { self.currentSens },
-                        set: { val in
-                            manager.setSensitivity(val, presetId: preset.id, for: bundleId)
-                        }
-                    ),
-                    in: 1.0...3.0,
-                    step: 0.05
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(red: 0.08, green: 0.10, blue: 0.16).opacity(0.92))
+                .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.red.opacity(0.5), lineWidth: 1)
                 )
-                .accentColor(preset.accentColor)
-
-                HStack {
-                    Text("Trục X: \(String(format: "%.2fx", currentSens * preset.xRatio))")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundColor(.gray)
-
-                    Spacer()
-
-                    Text("Trục Y (Head Lock): \(String(format: "%.2fx", currentSens * preset.yRatio))")
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundColor(preset.accentColor)
-                }
+                .shadow(color: Color.black.opacity(0.7), radius: 10)
             }
-            .padding(10)
-            .background(Color.black.opacity(0.25))
-            .cornerRadius(10)
         }
         .padding(16)
         .background(Color(red: 0.08, green: 0.10, blue: 0.16))
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(isActive ? preset.accentColor.opacity(0.6) : Color.white.opacity(0.07), lineWidth: isActive ? 1.5 : 1)
+                .stroke(isActive && isPermitted ? preset.accentColor.opacity(0.6) : Color.white.opacity(0.07), lineWidth: isActive && isPermitted ? 1.5 : 1)
         )
-        .shadow(color: isActive ? preset.accentColor.opacity(0.15) : Color.clear, radius: 10, x: 0, y: 4)
+        .shadow(color: isActive && isPermitted ? preset.accentColor.opacity(0.15) : Color.clear, radius: 10, x: 0, y: 4)
     }
 }
 
@@ -2558,35 +2658,33 @@ struct ExternalIOSGameSectionView: View {
             // Quick action buttons for this game
             HStack(spacing: 10) {
                 Button(action: {
-                    if licenseManager.tier == .all {
-                        manager.activateAll(for: app.bundleId)
+                    let permitted = ExternalCategory.allCases.filter { licenseManager.canAccess(category: $0) }
+                    if permitted.isEmpty {
                         NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                            object: "Tất cả tính năng (\(app.name))"
+                            name: NSNotification.Name("DNTWEAKS_TriggerTierLockedToast"),
+                            object: "Gói key của bạn không có quyền kích hoạt bất kỳ phân hệ nào!"
                         )
-                    } else if licenseManager.tier == .aimlock {
-                        manager.activateAllAimlock(for: app.bundleId)
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                            object: "Aimlock V1 - V5 (\(app.name))"
-                        )
-                    } else if licenseManager.tier == .sensitive {
-                        manager.activateAllSensitive(for: app.bundleId)
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                            object: "Sensitive V1 - V5 (\(app.name))"
-                        )
-                    } else if licenseManager.tier == .regedit {
-                        manager.activateAllRegedit(for: app.bundleId)
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                            object: "Regedit V1 - V5 (\(app.name))"
-                        )
+                        return
                     }
+                    for cat in permitted {
+                        switch cat {
+                        case .aimlock:
+                            manager.activateAllAimlock(for: app.bundleId)
+                        case .sensitive:
+                            manager.activateAllSensitive(for: app.bundleId)
+                        case .regedit:
+                            manager.activateAllRegedit(for: app.bundleId)
+                        }
+                    }
+                    let names = permitted.map { $0.rawValue }.joined(separator: ", ")
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                        object: "\(names) (\(app.name))"
+                    )
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
-                        Text(licenseManager.tier == .all ? "Bật Tất Cả Cho \(app.name)" : "Bật \(licenseManager.tierName) Cho \(app.name)")
+                        Text(licenseManager.allowedModules.contains("all") || licenseManager.allowedModules.count == 3 ? "Bật Tất Cả Cho \(app.name)" : "Bật (\(licenseManager.tierName)) Cho \(app.name)")
                     }
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
@@ -2617,35 +2715,44 @@ struct ExternalIOSGameSectionView: View {
             // Sub Tab Switcher: Aimlock vs Sensitive vs Regedit
             HStack(spacing: 8) {
                 Button(action: { selectedSubTab = .aimlock }) {
-                    Text("🎯 AIMLOCK")
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundColor(selectedSubTab == .aimlock ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(selectedSubTab == .aimlock ? Color.cyan : Color.white.opacity(0.05))
-                        .cornerRadius(8)
+                    HStack(spacing: 4) {
+                        Text(licenseManager.canAccess(category: .aimlock) ? "🎯" : "🔒")
+                        Text("AIMLOCK")
+                    }
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(selectedSubTab == .aimlock ? .black : (licenseManager.canAccess(category: .aimlock) ? .white : .gray))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(selectedSubTab == .aimlock ? Color.cyan : Color.white.opacity(0.05))
+                    .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: { selectedSubTab = .sensitive }) {
-                    Text("⚡ SENSITIVE")
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundColor(selectedSubTab == .sensitive ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(selectedSubTab == .sensitive ? Color.orange : Color.white.opacity(0.05))
-                        .cornerRadius(8)
+                    HStack(spacing: 4) {
+                        Text(licenseManager.canAccess(category: .sensitive) ? "⚡" : "🔒")
+                        Text("SENSITIVE")
+                    }
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(selectedSubTab == .sensitive ? .black : (licenseManager.canAccess(category: .sensitive) ? .white : .gray))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(selectedSubTab == .sensitive ? Color.orange : Color.white.opacity(0.05))
+                    .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: { selectedSubTab = .regedit }) {
-                    Text("💎 REGEDIT")
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundColor(selectedSubTab == .regedit ? .black : .white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(selectedSubTab == .regedit ? Color.yellow : Color.white.opacity(0.05))
-                        .cornerRadius(8)
+                    HStack(spacing: 4) {
+                        Text(licenseManager.canAccess(category: .regedit) ? "💎" : "🔒")
+                        Text("REGEDIT")
+                    }
+                    .font(.system(size: 10, weight: .heavy))
+                    .foregroundColor(selectedSubTab == .regedit ? .black : (licenseManager.canAccess(category: .regedit) ? .white : .gray))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(selectedSubTab == .regedit ? Color.yellow : Color.white.opacity(0.05))
+                    .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
             }

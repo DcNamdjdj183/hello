@@ -40,12 +40,14 @@ final class LicenseManager: ObservableObject {
     @Published private(set) var remainingSeconds: Int = 0
     @Published private(set) var tier: KeyTier = .all
     @Published private(set) var tierName: String = "ALL ACCESS VIP"
+    @Published private(set) var allowedModules: Set<String> = ["aimlock", "sensitive", "regedit"]
 
     private let service = "com.DNTWEAKS.external-ios.activation"
     private let keyAccount = "license-key"
     private let hwidAccount = "device-hwid"
     private let expiresAccount = "license-expires"
     private let tierAccount = "license-tier"
+    private let modulesAccount = "license-allowed-modules"
     private var lastAttemptAt: Date?
     private var timer: Timer?
 
@@ -57,12 +59,30 @@ final class LicenseManager: ObservableObject {
     }
 
     private func checkStoredKey() {
+        if let savedMods = string(for: modulesAccount), !savedMods.isEmpty {
+            let list = savedMods.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            self.allowedModules = Set(list)
+        } else if let savedTier = string(for: tierAccount), !savedTier.isEmpty {
+            if savedTier == "all" {
+                self.allowedModules = ["aimlock", "sensitive", "regedit"]
+            } else {
+                let list = savedTier.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                self.allowedModules = Set(list)
+            }
+        } else {
+            self.allowedModules = ["aimlock", "sensitive", "regedit"]
+        }
+
         if let savedTier = string(for: tierAccount), let parsed = KeyTier(rawValue: savedTier) {
             self.tier = parsed
             self.tierName = parsed.badgeText
         } else {
             self.tier = .all
-            self.tierName = "ALL ACCESS VIP"
+            if allowedModules.count == 3 || allowedModules.contains("all") {
+                self.tierName = "ALL ACCESS VIP"
+            } else {
+                self.tierName = allowedModules.map { $0.uppercased() }.joined(separator: " + ") + " VIP"
+            }
         }
 
         if let savedKey = string(for: keyAccount), let expiresStr = string(for: expiresAccount) {
@@ -108,16 +128,15 @@ final class LicenseManager: ObservableObject {
     // Kiểm tra quyền kích hoạt các phân hệ (Aimlock, Sensitive, Regedit)
     func canAccess(category: ExternalCategory) -> Bool {
         guard isActive else { return false }
-        switch tier {
-        case .all:
-            return true
-        case .aimlock:
-            return category == .aimlock
-        case .sensitive:
-            return category == .sensitive
-        case .regedit:
-            return category == .regedit
-        }
+        if allowedModules.contains("all") { return true }
+        return allowedModules.contains(category.rawValue.lowercased())
+    }
+
+    func canAccess(moduleName: String) -> Bool {
+        guard isActive else { return false }
+        let lower = moduleName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if allowedModules.contains("all") { return true }
+        return allowedModules.contains(lower)
     }
 
     func activate(key: String) {
@@ -139,7 +158,8 @@ final class LicenseManager: ObservableObject {
             self.expirationDate = expDate
             self.isActive = true
             self.tier = .all
-            self.tierName = "ALL ACCESS VIP"
+            self.tierName = "ALL ACCESS VIP (TRỌN BỘ)"
+            self.allowedModules = ["aimlock", "sensitive", "regedit", "all"]
             self.message = "Kích hoạt quyền Master Developer VIP thành công!"
             self.isBusy = false
             if self.rememberKey {
@@ -147,6 +167,7 @@ final class LicenseManager: ObservableObject {
                 let formatter = ISO8601DateFormatter()
                 self.save(formatter.string(from: expDate), for: self.expiresAccount)
                 self.save(self.tier.rawValue, for: self.tierAccount)
+                self.save("aimlock,sensitive,regedit", for: self.modulesAccount)
             }
             self.startTimer()
             return
@@ -182,13 +203,34 @@ final class LicenseManager: ObservableObject {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                         let ok = (json["ok"] as? Bool) ?? (json["success"] as? Bool) ?? false
                         if ok {
-                            // Phân giải loại Tier từ Server
+                            // Phân giải Allowed Modules từ Server
+                            if let modsList = json["allowedModules"] as? [String] {
+                                self.allowedModules = Set(modsList.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+                            } else if let tierStr = json["tier"] as? String {
+                                if tierStr == "all" {
+                                    self.allowedModules = ["aimlock", "sensitive", "regedit"]
+                                } else {
+                                    let list = tierStr.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                                    self.allowedModules = Set(list)
+                                }
+                            } else {
+                                self.allowedModules = ["aimlock", "sensitive", "regedit"]
+                            }
+
+                            // Phân giải loại Tier & Tên hiển thị từ Server
+                            if let tierNameStr = json["tierName"] as? String {
+                                self.tierName = tierNameStr
+                            } else if self.allowedModules.contains("all") || self.allowedModules.count == 3 {
+                                self.tierName = "ALL ACCESS VIP (TRỌN BỘ)"
+                            } else {
+                                let names = self.allowedModules.map { $0.uppercased() }.joined(separator: " + ")
+                                self.tierName = "\(names) VIP"
+                            }
+
                             if let tierStr = json["tier"] as? String, let parsedTier = KeyTier(rawValue: tierStr) {
                                 self.tier = parsedTier
-                                self.tierName = (json["tierName"] as? String) ?? parsedTier.badgeText
                             } else {
-                                self.tier = .all
-                                self.tierName = "ALL ACCESS VIP"
+                                self.tier = self.allowedModules.count == 3 ? .all : (self.allowedModules.first == "aimlock" ? .aimlock : (self.allowedModules.first == "sensitive" ? .sensitive : .regedit))
                             }
 
                             if let expiresAt = json["expiresAt"] as? String {
@@ -208,6 +250,8 @@ final class LicenseManager: ObservableObject {
                                         self.save(trimmed, for: self.keyAccount)
                                         self.save(expiresAt, for: self.expiresAccount)
                                         self.save(self.tier.rawValue, for: self.tierAccount)
+                                        let modsStr = Array(self.allowedModules).joined(separator: ",")
+                                        self.save(modsStr, for: self.modulesAccount)
                                     }
                                     self.startTimer()
                                 } else {
@@ -224,6 +268,8 @@ final class LicenseManager: ObservableObject {
                                     let formatter = ISO8601DateFormatter()
                                     self.save(formatter.string(from: expDate), for: self.expiresAccount)
                                     self.save(self.tier.rawValue, for: self.tierAccount)
+                                    let modsStr = Array(self.allowedModules).joined(separator: ",")
+                                    self.save(modsStr, for: self.modulesAccount)
                                 }
                                 self.startTimer()
                             }
@@ -273,9 +319,11 @@ final class LicenseManager: ObservableObject {
         delete(keyAccount)
         delete(expiresAccount)
         delete(tierAccount)
+        delete(modulesAccount)
         isActive = false
         tier = .all
         tierName = "ALL ACCESS VIP"
+        allowedModules = ["aimlock", "sensitive", "regedit"]
         message = "Đã đăng xuất key trên thiết bị này"
     }
 

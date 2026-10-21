@@ -10,11 +10,16 @@ Server quản lý Key và xác thực bản quyền cho ứng dụng **DNTWEAKS 
    - **Master Admin (Bạn)**: Toàn quyền tạo tài khoản Seller, phân quyền loại key được phép tạo cho từng Seller, xem toàn bộ thống kê và quản lý toàn bộ Key trên hệ thống.
    - **Seller (Đại Lý)**: Đăng nhập bằng tài khoản Admin cấp, chỉ tạo được các loại Key trong phạm vi được cho phép, chỉ xem và quản lý danh sách Key do chính mình tạo ra.
 
-2. **Hỗ Trợ 4 Phân Hệ Key**:
-   - `VIP TOÀN BỘ (ALL)`: Mở khóa trọn bộ tính năng (Aimlock, Sensitive, Regedit).
-   - `AIMLOCK ONLY`: Chỉ kích hoạt và sử dụng được phân hệ Aimlock V1 - V5.
-   - `SENSITIVE ONLY`: Chỉ kích hoạt và sử dụng được phân hệ Sensitive V1 - V5.
-   - `REGEDIT ONLY`: Chỉ kích hoạt và sử dụng được phân hệ Regedit V1 - V5.
+2. **Tùy Biến Phân Hệ Linh Hoạt & Khóa Làm Mờ Trực Quan**:
+   - Cho phép tích chọn bất kỳ tổ hợp tính năng nào khi tạo Key:
+     - `AIMLOCK VIP (V1 - V5)`
+     - `SENSITIVE VIP (V1 - V5)`
+     - `REGEDIT VIP (V1 - V5)`
+     - Hoặc tạo combo: `Aimlock + Regedit`, `Aimlock + Sensitive`, hoặc `VIP Toàn Bộ (All Access)`.
+   - **Cơ chế khóa & làm mờ trên App iOS**:
+     - Khi người dùng nhập Key vào App, hệ thống sẽ xác thực và chỉ mở đúng các mục được cấp quyền.
+     - Các phân hệ không được cấp quyền sẽ tự động **bị khóa và làm mờ** (`blur(2.5px)` + giảm opacity `0.35` + vô hiệu hóa tương tác) kèm biểu tượng `🔒 CHƯA ĐƯỢC CẤP QUYỀN`.
+     - Thẻ trạng thái Key hiển thị rõ 3 huy hiệu `[✓ AIMLOCK]`, `[✓ SENSITIVE]`, `[✓ REGEDIT]` giúp người dùng nhận diện ngay gói quyền hạn của mình.
 
 3. **Bảo Mật Khóa Thiết Bị (HWID Lock)**:
    - Tự động gắn thiết bị khi người dùng nhập key lần đầu vào App.

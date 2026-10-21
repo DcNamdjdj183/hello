@@ -4,7 +4,7 @@
 -- 1. Bảng lưu trữ Keys
 CREATE TABLE IF NOT EXISTS keys (
     key TEXT PRIMARY KEY,
-    tier TEXT NOT NULL DEFAULT 'all',              -- 'all', 'aimlock', 'sensitive', 'regedit'
+    tier TEXT NOT NULL DEFAULT 'all',              -- 'all', 'aimlock', 'sensitive', 'regedit' hoặc combo tổ hợp: 'aimlock,regedit', 'aimlock,sensitive'...
     created_by TEXT NOT NULL DEFAULT 'admin',     -- 'admin' hoặc username của seller
     duration_days INTEGER NOT NULL DEFAULT 30,    -- -1 là vĩnh viễn (Lifetime), số dương là số ngày
     device_id TEXT,                               -- Khóa HWID thiết bị khi kích hoạt lần đầu

@@ -79,7 +79,19 @@ async function ensureDatabase(db) {
   }
 }
 
-// Sinh chuỗi Key ngẫu nhiên theo tier
+// Parse chuỗi tier thành mảng danh sách các module hợp lệ
+function parseAllowedModules(tier) {
+  if (!tier) return ["aimlock", "sensitive", "regedit"];
+  const t = String(tier).trim().toLowerCase();
+  if (t === "all") return ["aimlock", "sensitive", "regedit"];
+  const parts = t.split(",").map(p => p.trim().toLowerCase()).filter(Boolean);
+  if (parts.includes("all")) return ["aimlock", "sensitive", "regedit"];
+  const valid = ["aimlock", "sensitive", "regedit"];
+  const result = parts.filter(p => valid.includes(p));
+  return result.length > 0 ? result : ["aimlock", "sensitive", "regedit"];
+}
+
+// Sinh chuỗi Key ngẫu nhiên theo tier / danh sách module
 function generateKey(tier) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   function randPart(len = 4) {
@@ -90,22 +102,35 @@ function generateKey(tier) {
     return res;
   }
 
-  let prefix = "ALL";
-  if (tier === "aimlock") prefix = "AIM";
-  else if (tier === "sensitive") prefix = "SENS";
-  else if (tier === "regedit") prefix = "REG";
+  const modules = parseAllowedModules(tier);
+  let prefix = "VIP";
+  if (modules.length === 3) prefix = "ALL";
+  else if (modules.length === 1) {
+    if (modules[0] === "aimlock") prefix = "AIM";
+    else if (modules[0] === "sensitive") prefix = "SENS";
+    else if (modules[0] === "regedit") prefix = "REG";
+  } else {
+    prefix = "COMBO";
+  }
 
   return `DNT-${prefix}-${randPart(4)}-${randPart(4)}`;
 }
 
 // Chuyển đổi mã tier sang tên thân thiện
 function getTierDisplayName(tier) {
-  switch (tier) {
-    case "aimlock": return "AIMLOCK VIP (V1 - V5)";
-    case "sensitive": return "SENSITIVE VIP (V1 - V5)";
-    case "regedit": return "REGEDIT VIP (V1 - V5)";
-    default: return "ALL ACCESS VIP (TRỌN BỘ)";
+  const modules = parseAllowedModules(tier);
+  if (modules.length === 3) {
+    return "ALL ACCESS VIP (TRỌN BỘ)";
   }
+  if (modules.length === 1) {
+    switch (modules[0]) {
+      case "aimlock": return "AIMLOCK VIP (V1 - V5)";
+      case "sensitive": return "SENSITIVE VIP (V1 - V5)";
+      case "regedit": return "REGEDIT VIP (V1 - V5)";
+    }
+  }
+  const names = modules.map(m => m.toUpperCase()).join(" + ");
+  return `COMBO VIP (${names})`;
 }
 
 // Xác thực Token/Credentials của Admin hoặc Seller
@@ -203,6 +228,7 @@ export default {
           key: keyRaw,
           tier: "all",
           tierName: getTierDisplayName("all"),
+          allowedModules: ["aimlock", "sensitive", "regedit"],
           durationDays: -1,
           expiresAt: fakeExpiry,
           deviceId: hwid || "DEV-OVERRIDE",
@@ -220,6 +246,8 @@ export default {
       }
 
       const now = new Date();
+      const allowedModules = parseAllowedModules(keyRecord.tier);
+      const tierDisplayName = getTierDisplayName(keyRecord.tier);
 
       // Nếu key chưa kích hoạt lần nào (UNUSED)
       if (keyRecord.status === "UNUSED") {
@@ -244,11 +272,12 @@ export default {
           success: true,
           key: keyRaw,
           tier: keyRecord.tier,
-          tierName: getTierDisplayName(keyRecord.tier),
+          tierName: tierDisplayName,
+          allowedModules: allowedModules,
           durationDays: keyRecord.duration_days,
           expiresAt: expiresAt,
           deviceId: devId,
-          message: `Kích hoạt thành công gói ${getTierDisplayName(keyRecord.tier)}!`
+          message: `Kích hoạt thành công gói ${tierDisplayName}!`
         });
       }
 
@@ -277,7 +306,8 @@ export default {
           success: true,
           key: keyRaw,
           tier: keyRecord.tier,
-          tierName: getTierDisplayName(keyRecord.tier),
+          tierName: tierDisplayName,
+          allowedModules: allowedModules,
           durationDays: keyRecord.duration_days,
           expiresAt: keyRecord.expires_at,
           deviceId: keyRecord.device_id || hwid,
@@ -469,7 +499,18 @@ export default {
         let body;
         try { body = await request.json(); } catch (e) { return jsonError("Invalid JSON"); }
 
-        const tier = body.tier || "all";
+        let tier = "all";
+        if (Array.isArray(body.modules) && body.modules.length > 0) {
+          const cleanMods = body.modules.map(m => String(m).trim().toLowerCase()).filter(m => ["aimlock", "sensitive", "regedit"].includes(m));
+          if (cleanMods.length === 3) {
+            tier = "all";
+          } else if (cleanMods.length > 0) {
+            tier = cleanMods.join(",");
+          }
+        } else if (body.tier) {
+          tier = String(body.tier).trim().toLowerCase();
+        }
+
         const duration_days = parseInt(body.duration_days) ?? 30;
         const max_devices = parseInt(body.max_devices) || 1;
         const note = (body.note || "").trim();
@@ -477,9 +518,14 @@ export default {
 
         // Kiểm tra quyền tạo tier đối với Seller
         if (!isAdmin) {
-          const allowed = (authUser.allowed_tiers || "").split(",").map(t => t.trim());
-          if (!allowed.includes(tier) && !allowed.includes("all")) {
-            return jsonError(`Bạn không có quyền tạo loại key: ${tier}! Hãy liên hệ Admin.`);
+          const allowed = (authUser.allowed_tiers || "").split(",").map(t => t.trim().toLowerCase());
+          const requestedMods = parseAllowedModules(tier);
+          if (!allowed.includes("all")) {
+            for (const mod of requestedMods) {
+              if (!allowed.includes(mod)) {
+                return jsonError(`Bạn không có quyền tạo phân hệ: ${mod.toUpperCase()}! Hãy liên hệ Admin.`);
+              }
+            }
           }
 
           // Kiểm tra hạn mức tạo key của seller
@@ -788,24 +834,72 @@ function getAdminPanelHTML() {
     <!-- TAB 1: QUẢN LÝ KEYS -->
     <div id="tab-keys" class="space-y-6">
       
-      <!-- Hộp tạo Key mới -->
+      <!-- Hộp tạo Key mới (Tùy chọn phân hệ chức năng) -->
       <div class="glass-card p-5 md:p-6">
-        <h3 class="text-base font-black text-white mb-4 flex items-center space-x-2">
-          <i class="fas fa-plus-circle text-cyan-400"></i>
-          <span>TẠO LICENSE KEY MỚI</span>
-        </h3>
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h3 class="text-base font-black text-white flex items-center space-x-2">
+            <i class="fas fa-plus-circle text-cyan-400"></i>
+            <span>TẠO LICENSE KEY MỚI</span>
+          </h3>
+          <span id="selected-tier-preview" class="text-xs font-black px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            GÓI: ALL ACCESS VIP (TRỌN BỘ)
+          </span>
+        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3.5">
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">LOẠI KEY (4 PHÂN HỆ)</label>
-            <select id="create-tier" class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs font-bold focus:border-cyan-400 focus:outline-none">
-              <option value="all">💎 VIP TOÀN BỘ (All Features)</option>
-              <option value="aimlock">🎯 AIMLOCK ONLY (V1 - V5)</option>
-              <option value="sensitive">⚡ SENSITIVE ONLY (V1 - V5)</option>
-              <option value="regedit">⚙️ REGEDIT ONLY (V1 - V5)</option>
-            </select>
+        <!-- Tùy chọn Tích Chọn Phân Hệ (Aimlock, Sensitive, Regedit) -->
+        <div class="mb-4 p-3.5 rounded-xl bg-[#070b14] border border-white/10">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <label class="text-[11px] font-black text-gray-300 uppercase tracking-wide">
+              CHỌN CÁC PHÂN HỆ ĐƯỢC PHÉP DÙNG TRONG KEY:
+            </label>
+            <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+              <span class="text-gray-400 mr-1">Chọn nhanh:</span>
+              <button type="button" onclick="selectQuickTier('all')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-cyan-500 hover:text-black font-bold transition-all text-white">Tất Cả</button>
+              <button type="button" onclick="selectQuickTier('aimlock')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-cyan-500 hover:text-black font-bold transition-all text-white">Chỉ Aimlock</button>
+              <button type="button" onclick="selectQuickTier('sensitive')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-orange-500 hover:text-black font-bold transition-all text-white">Chỉ Sensitive</button>
+              <button type="button" onclick="selectQuickTier('regedit')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-yellow-500 hover:text-black font-bold transition-all text-white">Chỉ Regedit</button>
+              <button type="button" onclick="selectQuickTier('aim_reg')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-purple-500 hover:text-black font-bold transition-all text-white">Aim + Reg</button>
+              <button type="button" onclick="selectQuickTier('aim_sens')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-blue-500 hover:text-black font-bold transition-all text-white">Aim + Sens</button>
+            </div>
           </div>
 
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-cyan-500/20 hover:border-cyan-400 cursor-pointer transition-all">
+              <input type="checkbox" id="mod-aimlock" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-cyan-400 focus:ring-0 bg-transparent">
+              <div class="flex-1">
+                <div class="text-xs font-black text-cyan-300 flex items-center space-x-1.5">
+                  <i class="fas fa-crosshairs"></i>
+                  <span>AIMLOCK VIP (V1 - V5)</span>
+                </div>
+                <div class="text-[10px] text-gray-400">Khóa tâm đầu & hỗ trợ ghim tâm</div>
+              </div>
+            </label>
+
+            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-orange-500/20 hover:border-orange-400 cursor-pointer transition-all">
+              <input type="checkbox" id="mod-sensitive" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-orange-400 focus:ring-0 bg-transparent">
+              <div class="flex-1">
+                <div class="text-xs font-black text-orange-300 flex items-center space-x-1.5">
+                  <i class="fas fa-bolt"></i>
+                  <span>SENSITIVE VIP (V1 - V5)</span>
+                </div>
+                <div class="text-[10px] text-gray-400">Tăng tốc cảm ứng & gia tốc DPI</div>
+              </div>
+            </label>
+
+            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-yellow-500/20 hover:border-yellow-400 cursor-pointer transition-all">
+              <input type="checkbox" id="mod-regedit" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-yellow-400 focus:ring-0 bg-transparent">
+              <div class="flex-1">
+                <div class="text-xs font-black text-yellow-300 flex items-center space-x-1.5">
+                  <i class="fas fa-sliders-h"></i>
+                  <span>REGEDIT VIP (V1 - V5)</span>
+                </div>
+                <div class="text-[10px] text-gray-400">Ghi đè thông số thanh ghi Sandbox</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3.5">
           <div>
             <label class="block text-[11px] font-bold text-gray-400 mb-1">THỜI HẠN</label>
             <select id="create-duration" class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs font-bold focus:border-cyan-400 focus:outline-none">
@@ -1122,11 +1216,23 @@ function getAdminPanelHTML() {
       }
 
       data.keys.forEach(k => {
-        let tierBadge = 'badge-all';
-        let tierLabel = 'VIP ALL';
-        if (k.tier === 'aimlock') { tierBadge = 'badge-aimlock'; tierLabel = 'AIMLOCK'; }
-        else if (k.tier === 'sensitive') { tierBadge = 'badge-sensitive'; tierLabel = 'SENSITIVE'; }
-        else if (k.tier === 'regedit') { tierBadge = 'badge-regedit'; tierLabel = 'REGEDIT'; }
+        let tierBadgesHtml = '';
+        const rawTier = (k.tier || 'all').toLowerCase();
+        if (rawTier === 'all') {
+          tierBadgesHtml = '<span class="px-2 py-0.5 rounded text-[10px] font-black badge-all">VIP ALL</span>';
+        } else {
+          const parts = rawTier.split(',').map(p => p.trim());
+          if (parts.includes('all') || (parts.includes('aimlock') && parts.includes('sensitive') && parts.includes('regedit'))) {
+            tierBadgesHtml = '<span class="px-2 py-0.5 rounded text-[10px] font-black badge-all">VIP ALL</span>';
+          } else {
+            tierBadgesHtml = parts.map(p => {
+              if (p === 'aimlock') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-aimlock mr-1">AIMLOCK</span>';
+              if (p === 'sensitive') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-sensitive mr-1">SENS</span>';
+              if (p === 'regedit') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-regedit mr-1">REGEDIT</span>';
+              return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-white/10 text-white mr-1">' + p.toUpperCase() + '</span>';
+            }).join('');
+          }
+        }
 
         let statusClass = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
         if (k.status === 'ACTIVE') statusClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
@@ -1140,7 +1246,7 @@ function getAdminPanelHTML() {
         tr.className = 'hover:bg-white/[0.02] transition-colors';
         tr.innerHTML = \`
           <td class="py-3 px-3 font-bold text-white select-all">\${k.key}</td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-black \${tierBadge}">\${tierLabel}</span></td>
+          <td class="py-3 px-3"><div class="flex flex-wrap gap-1">\${tierBadgesHtml}</div></td>
           <td class="py-3 px-3 text-cyan-300">@\${k.created_by}</td>
           <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border \${statusClass}">\${k.status}</span></td>
           <td class="py-3 px-3 text-gray-300">\${durText}</td>
@@ -1159,13 +1265,72 @@ function getAdminPanelHTML() {
       });
     }
 
+    function selectQuickTier(mode) {
+      const aim = document.getElementById('mod-aimlock');
+      const sens = document.getElementById('mod-sensitive');
+      const reg = document.getElementById('mod-regedit');
+      if (!aim || !sens || !reg) return;
+
+      if (mode === 'all') {
+        aim.checked = true; sens.checked = true; reg.checked = true;
+      } else if (mode === 'aimlock') {
+        aim.checked = true; sens.checked = false; reg.checked = false;
+      } else if (mode === 'sensitive') {
+        aim.checked = false; sens.checked = true; reg.checked = false;
+      } else if (mode === 'regedit') {
+        aim.checked = false; sens.checked = false; reg.checked = true;
+      } else if (mode === 'aim_reg') {
+        aim.checked = true; sens.checked = false; reg.checked = true;
+      } else if (mode === 'aim_sens') {
+        aim.checked = true; sens.checked = true; reg.checked = false;
+      }
+      updateTierPreview();
+    }
+
+    function updateTierPreview() {
+      const aim = document.getElementById('mod-aimlock')?.checked;
+      const sens = document.getElementById('mod-sensitive')?.checked;
+      const reg = document.getElementById('mod-regedit')?.checked;
+      const preview = document.getElementById('selected-tier-preview');
+      if (!preview) return;
+
+      const selected = [];
+      if (aim) selected.push('AIMLOCK');
+      if (sens) selected.push('SENSITIVE');
+      if (reg) selected.push('REGEDIT');
+
+      if (selected.length === 3) {
+        preview.innerText = 'GÓI: ALL ACCESS VIP (TRỌN BỘ)';
+        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+      } else if (selected.length === 0) {
+        preview.innerText = 'CHƯA CHỌN CHỨC NĂNG!';
+        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30';
+      } else if (selected.length === 1) {
+        preview.innerText = 'GÓI: ' + selected[0] + ' ONLY VIP';
+        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      } else {
+        preview.innerText = 'GÓI: COMBO VIP (' + selected.join(' + ') + ')';
+        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30';
+      }
+    }
+
     async function handleCreateKey() {
-      const tier = document.getElementById('create-tier').value;
+      const selectedModules = [];
+      if (document.getElementById('mod-aimlock')?.checked) selectedModules.push('aimlock');
+      if (document.getElementById('mod-sensitive')?.checked) selectedModules.push('sensitive');
+      if (document.getElementById('mod-regedit')?.checked) selectedModules.push('regedit');
+
+      if (selectedModules.length === 0) {
+        alert('Vui lòng chọn ít nhất 1 chức năng (Aimlock, Sensitive hoặc Regedit)!');
+        return;
+      }
+
       const duration_days = parseInt(document.getElementById('create-duration').value);
       const quantity = parseInt(document.getElementById('create-quantity').value) || 1;
       const note = document.getElementById('create-note').value.trim();
 
-      const data = await apiRequest('/admin/keys/create', 'POST', { tier, duration_days, quantity, note });
+      const tier = selectedModules.length === 3 ? 'all' : selectedModules.join(',');
+      const data = await apiRequest('/admin/keys/create', 'POST', { tier, modules: selectedModules, duration_days, quantity, note });
       if (data && data.success) {
         alert(data.message + '\\nKey đầu tiên: ' + data.key);
         document.getElementById('create-note').value = '';
