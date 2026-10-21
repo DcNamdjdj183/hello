@@ -21,9 +21,24 @@ if ! xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY='' \
   archive 2>&1 | tee "$BUILD_DIR/xcodebuild.log"; then
-  echo "::error title=Xcodebuild Error::Build failed, printing error details below:"
+
+  echo "::error title=Xcodebuild Failure::Archive step failed"
+
+  # Export error lines as GitHub annotations
+  grep -E "(error:|fatal error:)" "$BUILD_DIR/xcodebuild.log" | head -n 30 | while IFS= read -r err_line; do
+    echo "::error::$err_line"
+  done
+
+  # Also write to GitHub Step Summary if available
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    echo "## ❌ Xcodebuild Archive Failed" >> "$GITHUB_STEP_SUMMARY"
+    echo '```text' >> "$GITHUB_STEP_SUMMARY"
+    grep -E -C 2 "(error:|fatal error:|\*\* ARCHIVE FAILED \*\*)" "$BUILD_DIR/xcodebuild.log" | head -n 120 >> "$GITHUB_STEP_SUMMARY" || tail -n 80 "$BUILD_DIR/xcodebuild.log" >> "$GITHUB_STEP_SUMMARY"
+    echo '```' >> "$GITHUB_STEP_SUMMARY"
+  fi
+
   echo "-------------------- XCODEBUILD ERRORS --------------------"
-  grep -E -C 3 "(error:|fatal error:|\*\* ARCHIVE FAILED \*\*)" "$BUILD_DIR/xcodebuild.log" || true
+  grep -E -C 3 "(error:|fatal error:|\*\* ARCHIVE FAILED \*\*)" "$BUILD_DIR/xcodebuild.log" | head -n 100 || true
   echo "-------------------- LAST 100 LINES --------------------"
   tail -n 100 "$BUILD_DIR/xcodebuild.log"
   echo "--------------------------------------------------------"
