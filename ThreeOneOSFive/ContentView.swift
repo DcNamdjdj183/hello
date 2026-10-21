@@ -97,7 +97,7 @@ struct ContentView: View {
     }
 
     private var mainContent: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedHyperBackdrop()
                     .ignoresSafeArea()
@@ -113,7 +113,6 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             KeyStatusCard()
                             KernelStatusCard()
-                            PatchStoreSummaryCard()
 
                             ExternalIOSDashboardView()
                         }
@@ -122,10 +121,8 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
-            .navigationBarTitle("", displayMode: .inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
-        .navigationViewStyle(.stack)
         .environmentObject(licenseManager)
     }
 }
@@ -157,23 +154,17 @@ struct DeviceInfoHeader: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text("DNTWEAKS")
-                            .font(.system(size: 22, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-
                         Text("EXTERNAL v2.0")
-                            .font(.system(size: 10, weight: .black, design: .monospaced))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .tracking(1.2)
+                            .foregroundStyle(
                                 LinearGradient(
-                                    colors: [Color.cyan, Color.purple],
+                                    colors: [.white, Color.cyan],
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .cornerRadius(6)
-                            .foregroundColor(.white)
+                            .shadow(color: Color.cyan.opacity(0.4), radius: 8)
 
                         Text(licenseManager.tierName)
                             .font(.system(size: 9, weight: .bold, design: .rounded))
@@ -447,93 +438,7 @@ struct KernelStatusCard: View {
     }
 }
 
-struct PatchStoreSummaryCard: View {
-    @EnvironmentObject private var patchStore: PatchProjectStore
-    @State private var showImporter = false
-    @State private var importAlertTitle = ""
-    @State private var importAlertMessage = ""
-    @State private var showImportAlert = false
 
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "archivebox.fill")
-                            .foregroundColor(.cyan)
-                            .font(.system(size: 14))
-                        Text("KHO PATCH .3105")
-                            .font(.system(size: 12, weight: .black))
-                            .foregroundColor(.white)
-                    }
-                    Text("Đã nạp \(patchStore.items.count) gói patch vào hệ thống")
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                }
-
-                Spacer()
-
-                Button(action: { showImporter = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Nhập .3105")
-                    }
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.cyan, Color.blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(10)
-                }
-            }
-        }
-        .padding(14)
-        .background(Color.white.opacity(0.04))
-        .cornerRadius(18)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
-        )
-        .padding(.horizontal, 20)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [UTType(filenameExtension: "3105") ?? .data, .data],
-            allowsMultipleSelection: false
-        ) { result in
-            do {
-                guard let selectedFile = try result.get().first else { return }
-                guard selectedFile.startAccessingSecurityScopedResource() else {
-                    importAlertTitle = "Lỗi"
-                    importAlertMessage = "Không có quyền truy cập tệp"
-                    showImportAlert = true
-                    return
-                }
-                defer { selectedFile.stopAccessingSecurityScopedResource() }
-
-                let data = try Data(contentsOf: selectedFile)
-                let success = patchStore.importPackage(data: data)
-                if success {
-                    importAlertTitle = "Thành Công"
-                    importAlertMessage = "Đã nạp file patch .3105: \(selectedFile.lastPathComponent)"
-                    showImportAlert = true
-                }
-            } catch {
-                importAlertTitle = "Lỗi Nhập Patch"
-                importAlertMessage = error.localizedDescription
-                showImportAlert = true
-            }
-        }
-        .alert(isPresented: $showImportAlert) {
-            Alert(title: Text(importAlertTitle), message: Text(importAlertMessage), dismissButton: .default(Text("OK")))
-        }
-    }
-}
 
 // MARK: - App Management Section
 struct AppManagementSection: View {
@@ -600,14 +505,10 @@ struct AppCardView: View {
         return false
     }
 
-    private var patchCount: Int {
-        patchStore.items.filter { item in
-            if let project = item.project {
-                return project.allBundleIdentifiers.contains { $0.caseInsensitiveCompare(app.bundleId) == .orderedSame }
-            }
-            let name = item.packageURL.lastPathComponent.lowercased()
-            return name.contains(app.bundleId.lowercased()) || name.contains(app.name.lowercased())
-        }.count
+    private var externalCount: Int {
+        RegeditManager.shared.activeAimlockCount(for: app.bundleId) +
+        RegeditManager.shared.activeSensitiveCount(for: app.bundleId) +
+        RegeditManager.shared.activeRegeditCount(for: app.bundleId)
     }
 
     var body: some View {
@@ -643,12 +544,12 @@ struct AppCardView: View {
 
                 HStack(spacing: 8) {
                     HStack(spacing: 4) {
-                        Image(systemName: "archivebox")
+                        Image(systemName: "bolt.shield.fill")
                             .font(.system(size: 10))
-                        Text("\(patchCount) Patch .3105")
+                        Text("\(externalCount)/15 External")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundColor(patchCount > 0 ? .cyan : .gray.opacity(0.7))
+                    .foregroundColor(externalCount > 0 ? .cyan : .gray.opacity(0.7))
                 }
                 .padding(.top, 2)
             }
@@ -708,29 +609,14 @@ struct AppCardView: View {
 struct AppDetailView: View {
     let app: AppTarget
     @Environment(\.presentationMode) private var presentationMode
-    @EnvironmentObject private var patchStore: PatchProjectStore
-    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var licenseManager: LicenseManager
 
-    @State private var selectedTab = "Patches"
-    @State private var showFileImporter = false
+    @State private var selectedTab = "🎯 External v2.0"
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
-    @State private var isApplying = false
-    @State private var passwordPromptItem: PatchLibraryItem?
-    @State private var enteredPassword = ""
 
-    private let tabs = ["Patches", "🎯 External iOS", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
-
-    private var appPatches: [PatchLibraryItem] {
-        patchStore.items.filter { item in
-            if let project = item.project {
-                return project.allBundleIdentifiers.contains { $0.caseInsensitiveCompare(app.bundleId) == .orderedSame }
-            }
-            let name = item.packageURL.lastPathComponent.lowercased()
-            return name.contains(app.bundleId.lowercased()) || name.contains(app.name.lowercased())
-        }
-    }
+    private let tabs = ["🎯 External v2.0", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
 
     private var containerPath: String? {
         ContainerStore.resolveAppContainerPath(bundleID: app.bundleId)
@@ -801,9 +687,7 @@ struct AppDetailView: View {
                 // Tab Content
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
-                        if selectedTab == "Patches" {
-                            patchTabContent
-                        } else if selectedTab == "🎯 External iOS" {
+                        if selectedTab == "🎯 External v2.0" {
                             ExternalIOSGameSectionView(app: app)
                         } else if selectedTab == "DNS AntiBan" {
                             DNSSectionView(title: "CẤU HÌNH DNS ANTIBAN")
@@ -826,22 +710,9 @@ struct AppDetailView: View {
                 bottomLaunchBar
             }
         }
-        .navigationBarHidden(true)
-        .fileImporter(
-            isPresented: $showFileImporter,
-            allowedContentTypes: [UTType(filenameExtension: "3105") ?? .data, .data],
-            allowsMultipleSelection: false
-        ) { result in
-            handleImportResult(result)
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .alert(isPresented: $showAlert) {
             Alert(title: Text(alertTitle), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-        }
-        .sheet(item: $passwordPromptItem) { item in
-            PasswordUnlockSheet(item: item) { pass in
-                patchStore.unlock(item: item, password: pass)
-                passwordPromptItem = nil
-            }
         }
     }
 
@@ -896,83 +767,6 @@ struct AppDetailView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
         .padding(.horizontal, 20)
-    }
-
-    // MARK: - Patches Tab Content
-    private var patchTabContent: some View {
-        VStack(spacing: 16) {
-            // Action Buttons
-            HStack(spacing: 12) {
-                Button(action: { showFileImporter = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Nhập Patch (.3105)")
-                    }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.cyan, Color.blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(14)
-                }
-
-                Button(action: { restoreAllOriginalFiles() }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                        Text("Khôi Phục Gốc")
-                    }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.orange)
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(Color.orange.opacity(0.12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.orange.opacity(0.35), lineWidth: 1)
-                    )
-                    .cornerRadius(14)
-                }
-            }
-            .padding(.horizontal, 20)
-
-            // Patches List
-            if appPatches.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "doc.badge.plus")
-                        .font(.system(size: 42))
-                        .foregroundColor(.gray.opacity(0.5))
-                        .padding(.top, 30)
-
-                    Text("Chưa có patch .3105 nào cho \(app.name)")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.gray)
-
-                    Text("Bấm 'Nhập Patch (.3105)' ở trên để nạp file patch vào hệ thống.")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 30)
-                }
-                .padding(.bottom, 20)
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(appPatches) { item in
-                        PatchItemRowView(item: item, appBundleId: app.bundleId) { errorText in
-                            alertTitle = "Thông Báo"
-                            alertMessage = errorText
-                            showAlert = true
-                        } onUnlockRequested: {
-                            passwordPromptItem = item
-                        }
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
-        }
     }
 
     // MARK: - Cleaner Tab Content
@@ -1081,49 +875,6 @@ struct AppDetailView: View {
         )
     }
 
-    // MARK: - Methods
-    private func handleImportResult(_ result: Result<[URL], Error>) {
-        do {
-            guard let selectedFile = try result.get().first else { return }
-            guard selectedFile.startAccessingSecurityScopedResource() else {
-                alertTitle = "Lỗi"
-                alertMessage = "Không thể truy cập tệp"
-                showAlert = true
-                return
-            }
-            defer { selectedFile.stopAccessingSecurityScopedResource() }
-
-            let data = try Data(contentsOf: selectedFile)
-            let success = patchStore.importPackage(data: data)
-            if success {
-                alertTitle = "Thành Công"
-                alertMessage = "Đã nhập thành công gói patch .3105!"
-                showAlert = true
-            }
-        } catch {
-            alertTitle = "Lỗi Nhập Patch"
-            alertMessage = error.localizedDescription
-            showAlert = true
-        }
-    }
-
-    private func restoreAllOriginalFiles() {
-        var restoredCount = 0
-        for item in appPatches {
-            if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
-                do {
-                    try DevicePatchService.restore(receipt: receipt)
-                    restoredCount += 1
-                } catch {
-                    print("Error restoring: \(error)")
-                }
-            }
-        }
-        alertTitle = "Khôi Phục Gốc"
-        alertMessage = restoredCount > 0 ? "Đã hoàn tác và khôi phục \(restoredCount) patch về nguyên bản!" : "Không có patch nào đang hoạt động cần hoàn tác."
-        showAlert = true
-    }
-
     private func cleanAppCache() {
         guard let path = containerPath else {
             alertTitle = "Lỗi"
@@ -1144,206 +895,6 @@ struct AppDetailView: View {
         alertTitle = "Thành Công"
         alertMessage = "Đã dọn dẹp sạch cache và tệp tạm thời cho \(app.name)!"
         showAlert = true
-    }
-}
-
-// MARK: - Patch Item Row View
-struct PatchItemRowView: View {
-    let item: PatchLibraryItem
-    let appBundleId: String
-    let onFeedback: (String) -> Void
-    let onUnlockRequested: () -> Void
-
-    @State private var isBusy = false
-
-    private var isApplied: Bool {
-        DevicePatchService.latestReceipt(projectID: item.id) != nil
-    }
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(isApplied ? Color.green.opacity(0.18) : Color.cyan.opacity(0.12))
-                    .frame(width: 40, height: 40)
-                Image(systemName: item.isLocked ? "lock.fill" : (isApplied ? "checkmark.seal.fill" : "archivebox.fill"))
-                    .font(.system(size: 16))
-                    .foregroundColor(isApplied ? .green : (item.isLocked ? .orange : .cyan))
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(patchName)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-
-                    if isApplied {
-                        Text("ACTIVE")
-                            .font(.system(size: 9, weight: .black))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.2))
-                            .foregroundColor(.green)
-                            .cornerRadius(4)
-                    }
-                }
-
-                Text("Tác giả: \(item.project?.author.isEmpty == false ? item.project!.author : "3105") • Schema v\(item.summary.schemaVersion)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray)
-
-                if let project = item.project {
-                    Text("\(project.rules.count) tệp can thiệp • \(project.directories.count) thư mục")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.cyan.opacity(0.8))
-                } else if item.isLocked {
-                    Text("Gói có mật khẩu — Nhấn để mở khóa")
-                        .font(.system(size: 10))
-                        .foregroundColor(.orange)
-                }
-            }
-
-            Spacer()
-
-            if isBusy {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .cyan))
-            } else if item.isLocked {
-                Button(action: onUnlockRequested) {
-                    Text("Mở Khóa")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.orange)
-                        .cornerRadius(6)
-                }
-            } else {
-                Button(action: {
-                    togglePatch()
-                }) {
-                    Text(isApplied ? "TẮT" : "BẬT")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundColor(isApplied ? .red : .green)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(isApplied ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isApplied ? Color.red.opacity(0.4) : Color.green.opacity(0.4), lineWidth: 1)
-                        )
-                }
-            }
-        }
-        .padding(14)
-        .background(Color.white.opacity(0.04))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(isApplied ? Color.green.opacity(0.3) : Color.white.opacity(0.08), lineWidth: 1)
-        )
-    }
-
-    private var patchName: String {
-        if let project = item.project {
-            return project.name
-        }
-        return item.packageURL.deletingPathExtension().lastPathComponent
-    }
-
-    private func togglePatch() {
-        guard let project = item.project else {
-            onFeedback("Gói patch chưa được mở khóa.")
-            return
-        }
-
-        isBusy = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                if let receipt = DevicePatchService.latestReceipt(projectID: item.id) {
-                    // Turn OFF: Restore
-                    try DevicePatchService.restore(receipt: receipt)
-                    DispatchQueue.main.async {
-                        self.isBusy = false
-                        self.onFeedback("Đã tắt patch và khôi phục file gốc thành công!")
-                    }
-                } else {
-                    // Turn ON: Apply
-                    _ = try DevicePatchService.apply(project: project)
-                    DispatchQueue.main.async {
-                        self.isBusy = false
-                        self.onFeedback("Đã áp dụng patch .3105 vào \(project.name) thành công!")
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.isBusy = false
-                    self.onFeedback("Lỗi: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Password Unlock Sheet
-struct PasswordUnlockSheet: View {
-    let item: PatchLibraryItem
-    let onUnlock: (String) -> Void
-    @State private var password = ""
-    @Environment(\.presentationMode) private var presentationMode
-
-    var body: some View {
-        ZStack {
-            Color(red: 0.08, green: 0.1, blue: 0.15).ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                Text("MỞ KHÓA PATCH .3105")
-                    .font(.system(size: 16, weight: .black))
-                    .foregroundColor(.white)
-                    .padding(.top, 24)
-
-                Text("Gói patch này được bảo vệ bằng mật khẩu AES-GCM. Vui lòng nhập mật khẩu do tác giả cung cấp:")
-                    .font(.system(size: 13))
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
-                SecureField("Mật khẩu patch", text: $password)
-                    .font(.system(size: 16, design: .monospaced))
-                    .padding(14)
-                    .background(Color.white.opacity(0.08))
-                    .cornerRadius(12)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-
-                HStack(spacing: 12) {
-                    Button("Hủy") {
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.gray)
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(Color.white.opacity(0.06))
-                    .cornerRadius(12)
-
-                    Button("Mở Khóa") {
-                        onUnlock(password)
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .background(Color.cyan)
-                    .cornerRadius(12)
-                    .disabled(password.isEmpty)
-                }
-                .padding(.horizontal, 24)
-
-                Spacer()
-            }
-        }
-        .presentationDetents([.fraction(0.4)])
     }
 }
 
@@ -1414,32 +965,27 @@ struct AddAppModalView: View {
     }
 }
 
-// MARK: - Backdrop Animation
+// MARK: - Backdrop Background (Ổn định cố định, không trôi lệch)
 struct AnimatedHyperBackdrop: View {
-    @State private var animate = false
-
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color(red: 0.04, green: 0.05, blue: 0.08).ignoresSafeArea()
+        ZStack {
+            Color(red: 0.04, green: 0.05, blue: 0.08).ignoresSafeArea()
 
-                Circle()
-                    .fill(Color.cyan.opacity(0.10))
-                    .frame(width: 320, height: 320)
-                    .blur(radius: 80)
-                    .offset(x: animate ? 100 : -100, y: -proxy.size.height * 0.25)
+            // Glowing cyan ambient top-right
+            Circle()
+                .fill(Color.cyan.opacity(0.12))
+                .frame(width: 340, height: 340)
+                .blur(radius: 90)
+                .offset(x: 120, y: -260)
 
-                Circle()
-                    .fill(Color.purple.opacity(0.09))
-                    .frame(width: 280, height: 280)
-                    .blur(radius: 85)
-                    .offset(x: animate ? -80 : 80, y: proxy.size.height * 0.25)
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
-                    animate = true
-                }
-            }
+            // Glowing purple ambient bottom-left
+            Circle()
+                .fill(Color.purple.opacity(0.10))
+                .frame(width: 320, height: 320)
+                .blur(radius: 95)
+                .offset(x: -120, y: 260)
+
+            Color.black.opacity(0.18).ignoresSafeArea()
         }
         .ignoresSafeArea()
     }
@@ -1749,7 +1295,7 @@ struct CustomSettingsView: View {
                                 }
 
                                 Button(action: { showInfoAlert = true }) {
-                                    SettingsRow(icon: "info.circle.fill", title: "Thông Tin Hệ Thống", subtitle: "DNTWEAKS External v2.0 PRO", hasArrow: true)
+                                    SettingsRow(icon: "info.circle.fill", title: "Thông Tin Hệ Thống", subtitle: "EXTERNAL v2.0 PRO VIP", hasArrow: true)
                                 }
 
                                 Button(action: {
@@ -1778,7 +1324,7 @@ struct CustomSettingsView: View {
             Alert(title: Text("Cập Nhật Phiên Bản"), message: Text("Bạn đang sử dụng phiên bản mới nhất: External v2.0 PRO VIP (Build 2026.10.21).\nKhông có bản cập nhật mới nào."), dismissButton: .default(Text("OK")))
         }
         .alert(isPresented: $showInfoAlert) {
-            Alert(title: Text("Thông Tin DNTWEAKS"), message: Text("External iOS v2.0 PRO VIP\nEngine: External v2.0\nKernel: Exploit Bypass OK\nTouch Sampling: 240Hz Ultra\nStatus: Lifetime VIP Active"), dismissButton: .default(Text("OK")))
+            Alert(title: Text("Thông Tin EXTERNAL v2.0"), message: Text("EXTERNAL v2.0 PRO VIP\nEngine: External v2.0\nKernel: Exploit Bypass OK\nTouch Sampling: 240Hz Ultra\nStatus: Lifetime VIP Active"), dismissButton: .default(Text("OK")))
         }
         .alert(isPresented: $showRespringConfirm) {
             Alert(

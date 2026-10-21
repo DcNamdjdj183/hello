@@ -34,20 +34,23 @@ struct LicenseActivationView: View {
                                 }
                                 .padding(.bottom, 6)
 
-                                Text("DNTWEAKS")
-                                    .font(.system(size: 28, weight: .black, design: .rounded))
-                                    .tracking(2)
-                                    .foregroundStyle(.white)
+                                Text("EXTERNAL v2.0")
+                                    .font(.system(size: 32, weight: .black, design: .rounded))
+                                    .tracking(2.5)
+                                    .foregroundStyle(
+                                        LinearGradient(colors: [.white, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .shadow(color: Color.cyan.opacity(0.45), radius: 10)
 
-                                Text("EXTERNAL IOS v2.0 PRO VIP")
+                                Text("AIMLOCK • SENSITIVE • REGEDIT SUITE")
                                     .font(.system(size: 11, weight: .black, design: .monospaced))
                                     .foregroundStyle(Color.cyan)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
                                     .background(Color.cyan.opacity(0.12))
                                     .cornerRadius(6)
 
-                                Text("Aimlock • Sensitive • Regedit 3-in-1 Suite")
+                                Text("Hệ Thống Tối Ưu Hóa & Trợ Năng Chuyên Nghiệp")
                                     .font(.system(size: 11, weight: .medium, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.55))
                                     .padding(.top, 2)
@@ -155,10 +158,6 @@ struct LicenseActivationView: View {
                         .padding(.bottom, 28)
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: keyFocused) { focused in
-                        guard focused else { return }
-                        withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("activation-card", anchor: .center) }
-                    }
                 }
             }
         }
