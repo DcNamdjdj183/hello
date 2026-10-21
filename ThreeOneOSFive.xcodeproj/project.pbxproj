@@ -76,6 +76,10 @@
 		3105A228 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3105A120; };
 		3105A211 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3105A031; };
 		3105D200 /* RegeditManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105D100; };
+		3105M200 /* LicenseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105M100; };
+		3105M201 /* LicenseActivationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105M101; };
+		3105M202 /* ProfileServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105M102; };
+		3105M203 /* AppNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3105M103; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -166,6 +170,10 @@
 		3105A122 /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3105B123 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		3105D100 /* RegeditManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegeditManager.swift; sourceTree = "<group>"; };
+		3105M100 /* LicenseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseManager.swift; sourceTree = "<group>"; };
+		3105M101 /* LicenseActivationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseActivationView.swift; sourceTree = "<group>"; };
+		3105M102 /* ProfileServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileServer.swift; sourceTree = "<group>"; };
+		3105M103 /* AppNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotificationManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -293,6 +301,10 @@
 				3105A026 /* SBX.swift */,
 				3105A027 /* MG.swift */,
 				3105D100 /* RegeditManager.swift */,
+				3105M100 /* LicenseManager.swift */,
+				3105M101 /* LicenseActivationView.swift */,
+				3105M102 /* ProfileServer.swift */,
+				3105M103 /* AppNotificationManager.swift */,
 			);
 			path = helpers;
 			sourceTree = "<group>";
@@ -441,6 +453,10 @@
 				3105L204,
 				3105L205,
 				3105D200,
+				3105M200 /* LicenseManager.swift in Sources */,
+				3105M201 /* LicenseActivationView.swift in Sources */,
+				3105M202 /* ProfileServer.swift in Sources */,
+				3105M203 /* AppNotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
