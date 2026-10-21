@@ -605,10 +605,8 @@ struct AppCardView: View {
             if let project = item.project {
                 return project.allBundleIdentifiers.contains { $0.caseInsensitiveCompare(app.bundleId) == .orderedSame }
             }
-            if let target = item.summary.metadata.bundleIdentifier, target.caseInsensitiveCompare(app.bundleId) == .orderedSame {
-                return true
-            }
-            return false
+            let name = item.packageURL.lastPathComponent.lowercased()
+            return name.contains(app.bundleId.lowercased()) || name.contains(app.name.lowercased())
         }.count
     }
 
@@ -729,10 +727,8 @@ struct AppDetailView: View {
             if let project = item.project {
                 return project.allBundleIdentifiers.contains { $0.caseInsensitiveCompare(app.bundleId) == .orderedSame }
             }
-            if let target = item.summary.metadata.bundleIdentifier, target.caseInsensitiveCompare(app.bundleId) == .orderedSame {
-                return true
-            }
-            return false
+            let name = item.packageURL.lastPathComponent.lowercased()
+            return name.contains(app.bundleId.lowercased()) || name.contains(app.name.lowercased())
         }
     }
 
@@ -1192,7 +1188,7 @@ struct PatchItemRowView: View {
                     }
                 }
 
-                Text("Tác giả: \(item.summary.metadata.author.isEmpty ? "3105" : item.summary.metadata.author) • v\(item.summary.metadata.version)")
+                Text("Tác giả: \(item.project?.author.isEmpty == false ? item.project!.author : "3105") • Schema v\(item.summary.schemaVersion)")
                     .font(.system(size: 11))
                     .foregroundColor(.gray)
 
@@ -1253,7 +1249,7 @@ struct PatchItemRowView: View {
         if let project = item.project {
             return project.name
         }
-        return item.summary.metadata.name.isEmpty ? item.packageURL.deletingPathExtension().lastPathComponent : item.summary.metadata.name
+        return item.packageURL.deletingPathExtension().lastPathComponent
     }
 
     private func togglePatch() {

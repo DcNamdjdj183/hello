@@ -243,6 +243,11 @@ final class PatchProjectStore: ObservableObject {
         }
     }
 
+    func unlock(item: PatchLibraryItem, password: String) {
+        requestUnlock(for: item)
+        unlock(password: password)
+    }
+
     func unlock(password: String) {
         guard let pending = pendingUnlock, !isBusy else { return }
         isBusy = true
