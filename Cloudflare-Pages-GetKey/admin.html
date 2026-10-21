@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNTWEAKS KEY SERVER - Cyber Admin & Seller Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #06b6d4;
+      --primary-glow: rgba(6, 182, 212, 0.25);
+      --accent: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.25);
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg) 70%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .glass {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 20px; color: #fff;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+    .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .brand-badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      background: rgba(6, 182, 212, 0.15); color: var(--primary);
+      border: 1px solid rgba(6, 182, 212, 0.3); font-weight: 700;
+    }
+    .user-info { display: flex; align-items: center; gap: 14px; }
+    .role-tag {
+      font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+      background: rgba(139, 92, 246, 0.15); color: #c4b5fd;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .btn-logout {
+      background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5; padding: 6px 14px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-logout:hover { background: var(--danger); color: #fff; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab-btn {
+      padding: 10px 20px; border-radius: 10px; border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+      font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+      color: #fff; border-color: var(--primary);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .stat-title { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+    .stat-val { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+    /* Generator Card */
+    .section-card { padding: 24px; margin-bottom: 24px; }
+    .section-title {
+      font-size: 16px; font-weight: 700; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px; color: #fff;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px; margin-bottom: 20px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+    input, select {
+      background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border);
+      color: var(--text); padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    /* Checkboxes Group */
+    .modules-picker {
+      background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 12px;
+      border: 1px solid var(--card-border); margin-bottom: 18px;
+    }
+    .checkbox-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px; margin-top: 10px;
+    }
+    .checkbox-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer; user-select: none; transition: all 0.2s;
+    }
+    .checkbox-btn:hover { background: rgba(255, 255, 255, 0.05); }
+    .checkbox-btn input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+    .checkbox-btn span { font-size: 13px; font-weight: 600; }
+
+    /* Quick combos */
+    .quick-combos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .combo-btn {
+      background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8; padding: 5px 12px; border-radius: 6px; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .combo-btn:hover { background: rgba(6, 182, 212, 0.2); color: #fff; border-color: var(--primary); }
+
+    /* Submit Button */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff; border: none; padding: 12px 24px; border-radius: 10px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 15px var(--primary-glow); transition: all 0.2s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); opacity: 0.95; }
+
+    /* Key Output Box */
+    .key-result-box {
+      margin-top: 18px; padding: 18px; border-radius: 12px;
+      background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3);
+      display: none; align-items: center; justify-content: space-between; gap: 14px;
+    }
+    .key-result-text {
+      font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+      color: var(--primary); letter-spacing: 1px; user-select: all;
+    }
+    .btn-copy {
+      background: rgba(6, 182, 212, 0.2); border: 1px solid var(--primary);
+      color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-copy:hover { background: var(--primary); }
+
+    /* Search & Filter Bar */
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    .filter-bar input { flex: 1; min-width: 200px; }
+    .filter-bar select { min-width: 140px; }
+
+    /* Table Styles */
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th {
+      padding: 12px 14px; color: var(--text-muted); font-weight: 600;
+      border-bottom: 1px solid var(--card-border); background: rgba(0, 0, 0, 0.2);
+    }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .key-cell {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+      color: #38bdf8; user-select: all;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+    }
+    .badge-ACTIVE { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-UNUSED { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .badge-BANNED { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-REVOKED { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-EXPIRED { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+    .mod-tag {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      margin-right: 4px; display: inline-block;
+    }
+    .mod-aim { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .mod-sens { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .mod-reg { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    /* Action Buttons in Table */
+    .action-group { display: flex; gap: 6px; }
+    .btn-act {
+      padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-act-copy { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border-color: rgba(6, 182, 212, 0.3); }
+    .btn-act-reset { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+    .btn-act-ban { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+    .btn-act-unban { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+    .btn-act-del { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+    .btn-act:hover { opacity: 0.8; }
+
+    /* Login Modal Overlay */
+    #loginOverlay {
+      position: fixed; inset: 0; background: rgba(7, 9, 14, 0.95);
+      backdrop-filter: blur(20px); display: flex; align-items: center;
+      justify-content: center; z-index: 9999; padding: 20px;
+    }
+    .login-box {
+      width: 100%; max-width: 420px; padding: 32px; text-align: center;
+    }
+    .login-logo {
+      width: 54px; height: 54px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 26px; color: #fff; margin-bottom: 16px;
+      box-shadow: 0 0 25px var(--primary-glow);
+    }
+    .login-mode-switch {
+      display: flex; gap: 8px; margin: 20px 0 16px 0; background: rgba(0,0,0,0.3);
+      padding: 4px; border-radius: 10px; border: 1px solid var(--card-border);
+    }
+    .mode-btn {
+      flex: 1; padding: 8px; border-radius: 8px; border: none; background: transparent;
+      color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .mode-btn.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Modal Đăng Nhập -->
+  <div id="loginOverlay">
+    <div class="glass login-box">
+      <div class="login-logo">⚡</div>
+      <h2 style="font-weight: 800; font-size: 22px;">DNTWEAKS PANEL</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Đăng nhập để quản lý Key & Bản quyền</p>
+
+      <div class="login-mode-switch">
+        <button class="mode-btn active" id="btnModeAdmin" onclick="setLoginMode('admin')">Master Admin</button>
+        <button class="mode-btn" id="btnModeSeller" onclick="setLoginMode('seller')">Đại Lý (Seller)</button>
+      </div>
+
+      <div id="formAdminLogin">
+        <div class="form-group" style="text-align: left; margin-bottom: 16px;">
+          <label>Mã Bí Mật (ADMIN_SECRET)</label>
+          <input type="password" id="adminSecretInput" placeholder="Nhập mã ADMIN_SECRET..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
+      </div>
+
+      <div id="formSellerLogin" style="display: none;">
+        <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+          <label>Tên đăng nhập (Username)</label>
+          <input type="text" id="sellerUserInput" placeholder="Nhập tên đăng nhập..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
+        <div class="form-group" style="text-align: left; margin-bottom: 16px;">
+          <label>Mật khẩu</label>
+          <input type="password" id="sellerPassInput" placeholder="Nhập mật khẩu..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
+      </div>
+
+      <button class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;" onclick="doLogin()">
+        VÀO HỆ THỐNG QUẢN TRỊ 🚀
+      </button>
+      
+      <div style="margin-top: 16px;">
+        <a href="/" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">← Quay lại trang Nhận Key</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Giao Diện Chính -->
+  <div class="container" id="mainApp" style="display: none;">
+    <header class="glass">
+      <div class="brand">
+        <div class="brand-logo">⚡</div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-title">DNTWEAKS EXTERNAL</span>
+            <span class="brand-badge">v2.5 PRO VIP</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Hệ Thống Phân Phối Key Bản Quyền Tự Động</div>
+        </div>
+      </div>
+      <div class="user-info">
+        <span class="role-tag" id="userRoleBadge">ADMIN</span>
+        <a href="/" class="btn-act" style="text-decoration:none; padding: 6px 12px; background: rgba(255,255,255,0.05); color: #cbd5e1; border-radius: 8px;">Trang GetKey</a>
+        <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabKeysBtn" onclick="switchTab('keys')">🔑 Quản Lý Keys Bản Quyền</button>
+      <button class="tab-btn" id="tabSellersBtn" onclick="switchTab('sellers')" style="display: none;">👥 Quản Lý Đại Lý (Sellers)</button>
+    </div>
+
+    <!-- TAB 1: KEYS MANAGEMENT -->
+    <div id="tabKeysContent">
+      <!-- Thống Kê Tổng Quan -->
+      <div class="stats-grid">
+        <div class="glass stat-card">
+          <div class="stat-title">TỔNG SỐ KEYS</div>
+          <div class="stat-val" id="statTotal" style="color: #38bdf8;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">ĐANG HOẠT ĐỘNG</div>
+          <div class="stat-val" id="statActive" style="color: #34d399;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">KEY CHƯA KÍCH HOẠT</div>
+          <div class="stat-val" id="statUnused" style="color: #cbd5e1;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">HẾT HẠN / ĐÃ KHÓA</div>
+          <div class="stat-val" id="statBanned" style="color: #f87171;">0</div>
+        </div>
+      </div>
+
+      <!-- Card Tạo Key Mới -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>⚡ TẠO KEY BẢN QUYỀN MỚI</span>
+        </div>
+
+        <!-- Bộ Chọn Phân Hệ (Modules Checkboxes) -->
+        <div class="modules-picker">
+          <label style="color: #fff; font-size: 13px;">Tùy chọn phân hệ được phép kích hoạt trong Key:</label>
+          <div class="checkbox-row">
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modAimlock" checked>
+              <span>🎯 Aimlock VIP (V1 - V5)</span>
+            </label>
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modSensitive" checked>
+              <span>⚡ Sensitive VIP (V1 - V5)</span>
+            </label>
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modRegedit" checked>
+              <span>⚙️ Regedit VIP (V1 - V5)</span>
+            </label>
+          </div>
+          <div class="quick-combos">
+            <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Chọn nhanh:</span>
+            <button class="combo-btn" onclick="selectCombos('all')">VIP ALL (Trọn Bộ)</button>
+            <button class="combo-btn" onclick="selectCombos('aim')">Chỉ Aimlock</button>
+            <button class="combo-btn" onclick="selectCombos('sens')">Chỉ Sensitive</button>
+            <button class="combo-btn" onclick="selectCombos('reg')">Chỉ Regedit</button>
+            <button class="combo-btn" onclick="selectCombos('aim_reg')">Aim + Reg</button>
+            <button class="combo-btn" onclick="selectCombos('aim_sens')">Aim + Sens</button>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Thời Hạn Bản Quyền</label>
+            <select id="keyDuration">
+              <option value="1">1 Ngày (Dùng Thử)</option>
+              <option value="3">3 Ngày (Trải Nghiệm)</option>
+              <option value="7">7 Ngày (1 Tuần)</option>
+              <option value="30" selected>30 Ngày (1 Tháng VIP)</option>
+              <option value="90">90 Ngày (3 Tháng)</option>
+              <option value="365">365 Ngày (1 Năm)</option>
+              <option value="-1">Vĩnh Viễn (Lifetime VIP)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Số Thiết Bị Tối Đa (Max Devices)</label>
+            <input type="number" id="maxDevices" value="1" min="1">
+          </div>
+          <div class="form-group">
+            <label>Ghi Chú Khách Hàng / Đơn Hàng</label>
+            <input type="text" id="keyNote" placeholder="Ví dụ: Khách Facebook Zalo, Order #88...">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="createKey()">
+          <span>🚀 TẠO MÃ KEY NGAY</span>
+        </button>
+
+        <div class="key-result-box" id="keyResultBox">
+          <div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">KEY MỚI ĐÃ TẠO THÀNH CÔNG:</div>
+            <div class="key-result-text" id="createdKeyText">DNT-ALL-XXXX-YYYY-ZZZZ</div>
+            <div id="createdKeyDetails" style="font-size: 12px; color: #cbd5e1; margin-top: 4px;"></div>
+          </div>
+          <button class="btn-copy" onclick="copyCreatedKey()">📋 SAO CHÉP KEY</button>
+        </div>
+      </div>
+
+      <!-- Danh Sách Keys -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>📋 DANH SÁCH KEY BẢN QUYỀN TRÊN MÁY CHỦ</span>
+        </div>
+
+        <div class="filter-bar">
+          <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm theo Key, HWID Thiết bị, Ghi chú..." oninput="debounceLoadKeys()">
+          <select id="statusFilter" onchange="loadKeys()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
+            <option value="UNUSED">Chưa kích hoạt (UNUSED)</option>
+            <option value="BANNED">Đã khóa (BANNED)</option>
+            <option value="EXPIRED">Đã hết hạn (EXPIRED)</option>
+          </select>
+          <select id="tierFilter" onchange="loadKeys()">
+            <option value="">Tất cả phân hệ</option>
+            <option value="all">VIP ALL</option>
+            <option value="aimlock">Aimlock</option>
+            <option value="sensitive">Sensitive</option>
+            <option value="regedit">Regedit</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>MÃ KEY</th>
+                <th>PHÂN HỆ CẤP PHÉP</th>
+                <th>TRẠNG THÁI</th>
+                <th>THỜI HẠN</th>
+                <th>THIẾT BỊ LIÊN KẾT (HWID)</th>
+                <th>NGƯỜI TẠO</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody id="keysTableBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: SELLERS MANAGEMENT (ADMIN ONLY) -->
+    <div id="tabSellersContent" style="display: none;">
+      <!-- Card Thêm Đại Lý -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>👥 TẠO TÀI KHOẢN ĐẠI LÝ (SELLER) MỚI</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Tên Đăng Nhập (Username)</label>
+            <input type="text" id="sellerUsername" placeholder="ví dụ: seller_vip01">
+          </div>
+          <div class="form-group">
+            <label>Mật Khẩu</label>
+            <input type="text" id="sellerPassword" placeholder="Nhập mật khẩu cho seller">
+          </div>
+          <div class="form-group">
+            <label>Tên Hiển Thị (Display Name)</label>
+            <input type="text" id="sellerName" placeholder="ví dụ: Đại Lý Miền Nam">
+          </div>
+          <div class="form-group">
+            <label>Hạn Mức Tạo Key (Quota)</label>
+            <input type="number" id="sellerMaxKeys" value="100" min="0" placeholder="0 = Không giới hạn">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="createSeller()">
+          <span>➕ TẠO ĐẠI LÝ MỚI</span>
+        </button>
+      </div>
+
+      <!-- Bảng Danh Sách Đại Lý -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>👥 DANH SÁCH ĐẠI LÝ ĐANG HOẠT ĐỘNG</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>TÊN ĐĂNG NHẬP</th>
+                <th>TÊN HIỂN THỊ</th>
+                <th>QUOTA (ĐÃ DÙNG / TỐI ĐA)</th>
+                <th>NGÀY TẠO</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody id="sellersTableBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Đang tải danh sách đại lý...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://dntweaks-key-server.ddnstore.workers.dev";
+    let currentToken = localStorage.getItem('dnt_token') || '';
+    let currentRole = localStorage.getItem('dnt_role') || 'admin';
+    let currentUsername = localStorage.getItem('dnt_user') || 'admin';
+    let loginMode = 'admin';
+    let debounceTimer = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (currentToken) {
+        initSession();
+      }
+    });
+
+    function setLoginMode(mode) {
+      loginMode = mode;
+      document.getElementById('btnModeAdmin').classList.toggle('active', mode === 'admin');
+      document.getElementById('btnModeSeller').classList.toggle('active', mode === 'seller');
+      document.getElementById('formAdminLogin').style.display = mode === 'admin' ? 'block' : 'none';
+      document.getElementById('formSellerLogin').style.display = mode === 'seller' ? 'block' : 'none';
+    }
+
+    async function doLogin() {
+      if (loginMode === 'admin') {
+        const secret = document.getElementById('adminSecretInput').value.trim();
+        if (!secret) return alert('Vui lòng nhập ADMIN_SECRET');
+        const res = await fetch(API_BASE + '/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          saveSession(data.token, data.role, data.username);
+        } else {
+          alert('Sai ADMIN_SECRET!');
+        }
+      } else {
+        const username = document.getElementById('sellerUserInput').value.trim();
+        const password = document.getElementById('sellerPassInput').value.trim();
+        if (!username || !password) return alert('Vui lòng nhập tên đăng nhập và mật khẩu');
+        const res = await fetch(API_BASE + '/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          saveSession(data.token, data.role, data.username);
+        } else {
+          alert(data.message || 'Sai thông tin đăng nhập!');
+        }
+      }
+    }
+
+    function saveSession(token, role, username) {
+      currentToken = token;
+      currentRole = role;
+      currentUsername = username;
+      localStorage.setItem('dnt_token', token);
+      localStorage.setItem('dnt_role', role);
+      localStorage.setItem('dnt_user', username);
+      initSession();
+    }
+
+    function initSession() {
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      document.getElementById('userRoleBadge').textContent = currentRole === 'admin' ? '👑 MASTER ADMIN' : '👤 SELLER: ' + currentUsername.toUpperCase();
+      
+      if (currentRole === 'admin') {
+        document.getElementById('tabSellersBtn').style.display = 'inline-block';
+      } else {
+        document.getElementById('tabSellersBtn').style.display = 'none';
+      }
+
+      loadStats();
+      loadKeys();
+    }
+
+    function logout() {
+      localStorage.removeItem('dnt_token');
+      localStorage.removeItem('dnt_role');
+      localStorage.removeItem('dnt_user');
+      location.reload();
+    }
+
+    function switchTab(tab) {
+      document.getElementById('tabKeysBtn').classList.toggle('active', tab === 'keys');
+      document.getElementById('tabSellersBtn').classList.toggle('active', tab === 'sellers');
+      document.getElementById('tabKeysContent').style.display = tab === 'keys' ? 'block' : 'none';
+      document.getElementById('tabSellersContent').style.display = tab === 'sellers' ? 'block' : 'none';
+      if (tab === 'sellers') loadSellers();
+      if (tab === 'keys') loadKeys();
+    }
+
+    async function apiCall(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Authorization': 'Bearer ' + currentToken,
+        'Content-Type': 'application/json'
+      };
+      const opt = { method, headers };
+      if (body) opt.body = JSON.stringify(body);
+
+      try {
+        const res = await fetch(API_BASE + endpoint, opt);
+        if (res.status === 401) {
+          alert('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
+          logout();
+          return null;
+        }
+        return await res.json();
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+        return null;
+      }
+    }
+
+    function selectCombos(type) {
+      const aim = document.getElementById('modAimlock');
+      const sens = document.getElementById('modSensitive');
+      const reg = document.getElementById('modRegedit');
+      if (type === 'all') { aim.checked = true; sens.checked = true; reg.checked = true; }
+      else if (type === 'aim') { aim.checked = true; sens.checked = false; reg.checked = false; }
+      else if (type === 'sens') { aim.checked = false; sens.checked = true; reg.checked = false; }
+      else if (type === 'reg') { aim.checked = false; sens.checked = false; reg.checked = true; }
+      else if (type === 'aim_reg') { aim.checked = true; sens.checked = false; reg.checked = true; }
+      else if (type === 'aim_sens') { aim.checked = true; sens.checked = true; reg.checked = false; }
+    }
+
+    async function createKey() {
+      const modules = [];
+      if (document.getElementById('modAimlock').checked) modules.push('aimlock');
+      if (document.getElementById('modSensitive').checked) modules.push('sensitive');
+      if (document.getElementById('modRegedit').checked) modules.push('regedit');
+
+      if (modules.length === 0) {
+        return alert('Vui lòng chọn ít nhất 1 phân hệ cho Key!');
+      }
+
+      const duration_days = parseInt(document.getElementById('keyDuration').value);
+      const max_devices = parseInt(document.getElementById('maxDevices').value);
+      const note = document.getElementById('keyNote').value.trim();
+
+      const data = await apiCall('/api/admin/keys/create', 'POST', {
+        modules,
+        duration_days,
+        max_devices,
+        note
+      });
+
+      if (data && data.success) {
+        document.getElementById('keyResultBox').style.display = 'flex';
+        document.getElementById('createdKeyText').textContent = data.key;
+        document.getElementById('createdKeyDetails').textContent = 
+          'Phân hệ: ' + (data.tierName || data.tier) + ' • Hạn dùng: ' + (data.duration_days === -1 ? 'Vĩnh viễn' : data.duration_days + ' Ngày');
+        loadStats();
+        loadKeys();
+      } else if (data) {
+        alert('Lỗi tạo key: ' + (data.message || data.error));
+      }
+    }
+
+    function copyCreatedKey() {
+      const key = document.getElementById('createdKeyText').textContent;
+      navigator.clipboard.writeText(key).then(() => {
+        alert('Đã sao chép Key: ' + key);
+      });
+    }
+
+    async function loadStats() {
+      const data = await apiCall('/api/admin/stats');
+      if (data && data.success) {
+        document.getElementById('statTotal').textContent = data.stats.total_keys || 0;
+        document.getElementById('statActive').textContent = data.stats.active_keys || 0;
+        document.getElementById('statUnused').textContent = data.stats.unused_keys || 0;
+        document.getElementById('statBanned').textContent = (data.stats.banned_keys || 0) + (data.stats.expired_keys || 0);
+      }
+    }
+
+    function debounceLoadKeys() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadKeys, 300);
+    }
+
+    async function loadKeys() {
+      const search = document.getElementById('searchInput').value.trim();
+      const status = document.getElementById('statusFilter').value;
+      const tier = document.getElementById('tierFilter').value;
+
+      let q = '/api/admin/keys?search=' + encodeURIComponent(search);
+      if (status) q += '&status=' + encodeURIComponent(status);
+      if (tier) q += '&tier=' + encodeURIComponent(tier);
+
+      const data = await apiCall(q);
+      const tbody = document.getElementById('keysTableBody');
+      if (!data || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">Lỗi tải dữ liệu</td></tr>';
+        return;
+      }
+
+      if (!data.keys || data.keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Không tìm thấy Key nào phù hợp</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.keys.forEach(k => {
+        const tr = document.createElement('tr');
+
+        let modBadges = '';
+        const mods = k.allowed_modules_list || [];
+        if (mods.includes('aimlock')) modBadges += '<span class="mod-tag mod-aim">AIM</span>';
+        if (mods.includes('sensitive')) modBadges += '<span class="mod-tag mod-sens">SENS</span>';
+        if (mods.includes('regedit')) modBadges += '<span class="mod-tag mod-reg">REG</span>';
+        if (!modBadges) modBadges = '<span class="mod-tag" style="background:#334155;color:#94a3b8;">' + (k.product || 'ALL') + '</span>';
+
+        let durText = k.duration_days === -1 ? 'Vĩnh viễn' : (k.duration_days + ' Ngày');
+        if (k.expires_at) {
+          const expDate = new Date(k.expires_at);
+          durText += '<br><span style="font-size: 11px; color: var(--text-muted);">' + expDate.toLocaleDateString('vi-VN') + '</span>';
+        }
+
+        let actBtns = `
+          <button class="btn-act btn-act-copy" onclick="copyText('${k.key}')" title="Sao chép">📋 Copy</button>
+        `;
+
+        if (k.device_id) {
+          actBtns += `<button class="btn-act btn-act-reset" onclick="resetDevice('${k.key}')" title="Reset HWID">🔄 Reset HWID</button>`;
+        }
+
+        if (k.status === 'UNUSED' || k.status === 'ACTIVE') {
+          actBtns += `<button class="btn-act btn-act-ban" onclick="banKey('${k.key}')">🚫 Ban</button>`;
+        } else if (k.status === 'BANNED') {
+          actBtns += `<button class="btn-act btn-act-unban" onclick="unbanKey('${k.key}')">✓ Mở Ban</button>`;
+        }
+
+        actBtns += `<button class="btn-act btn-act-del" onclick="deleteKey('${k.key}')">🗑️ Xóa</button>`;
+
+        tr.innerHTML = `
+          <td><span class="key-cell">${k.key}</span></td>
+          <td>${modBadges}</td>
+          <td><span class="badge badge-${k.status}">${k.status}</span></td>
+          <td>${durText}</td>
+          <td style="font-family: monospace; font-size: 11px; color: var(--text-muted);">
+            ${k.device_id ? (k.device_id.substring(0, 16) + '...<br><span style="color:#38bdf8;">' + (k.device_name || 'iOS Device') + '</span>') : 'Chưa liên kết'}
+          </td>
+          <td><span style="font-size: 12px; color: #a78bfa;">${k.created_by || 'admin'}</span></td>
+          <td><div class="action-group">${actBtns}</div></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function copyText(str) {
+      navigator.clipboard.writeText(str).then(() => alert('Đã sao chép: ' + str));
+    }
+
+    async function banKey(key) {
+      if (!confirm('Khóa (Ban) mã key: ' + key + '?')) return;
+      await apiCall('/api/admin/keys/' + key + '/ban', 'POST');
+      loadKeys(); loadStats();
+    }
+
+    async function unbanKey(key) {
+      await apiCall('/api/admin/keys/' + key + '/unban', 'POST');
+      loadKeys(); loadStats();
+    }
+
+    async function resetDevice(key) {
+      if (!confirm('Reset HWID thiết bị cho key: ' + key + '?')) return;
+      await apiCall('/api/admin/keys/' + key + '/reset-device', 'POST');
+      loadKeys();
+    }
+
+    async function deleteKey(key) {
+      if (!confirm('XÓA VĨNH VIỄN mã key này khỏi hệ thống?')) return;
+      await apiCall('/api/admin/keys/' + key, 'DELETE');
+      loadKeys(); loadStats();
+    }
+
+    async function loadSellers() {
+      const data = await apiCall('/api/admin/sellers');
+      const tbody = document.getElementById('sellersTableBody');
+      if (!data || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 20px;">Lỗi tải đại lý</td></tr>';
+        return;
+      }
+      if (!data.sellers || data.sellers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có tài khoản đại lý nào</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.sellers.forEach(s => {
+        const tr = document.createElement('tr');
+        const quotaStr = s.max_keys === 0 ? (s.used_keys + ' / Vô hạn') : (s.used_keys + ' / ' + s.max_keys);
+        tr.innerHTML = `
+          <td>#${s.id}</td>
+          <td style="font-weight: 700; color: #38bdf8;">${s.username}</td>
+          <td>${s.name || s.username}</td>
+          <td><span style="font-family: monospace; font-weight: 700;">${quotaStr}</span></td>
+          <td style="font-size: 11px; color: var(--text-muted);">${new Date(s.created_at).toLocaleDateString('vi-VN')}</td>
+          <td>
+            <div class="action-group">
+              <button class="btn-act btn-act-reset" onclick="updateSellerQuota(${s.id}, ${s.max_keys})">⚡ Đổi Quota</button>
+              <button class="btn-act btn-act-del" onclick="deleteSeller(${s.id}, '${s.username}')">🗑️ Xóa</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function createSeller() {
+      const username = document.getElementById('sellerUsername').value.trim();
+      const password = document.getElementById('sellerPassword').value.trim();
+      const name = document.getElementById('sellerName').value.trim();
+      const max_keys = parseInt(document.getElementById('sellerMaxKeys').value);
+
+      if (!username || !password) return alert('Vui lòng nhập Username và Mật khẩu cho đại lý');
+
+      const data = await apiCall('/api/admin/sellers/create', 'POST', { username, password, name, max_keys });
+      if (data && data.success) {
+        alert(data.message);
+        document.getElementById('sellerUsername').value = '';
+        document.getElementById('sellerPassword').value = '';
+        document.getElementById('sellerName').value = '';
+        loadSellers();
+      } else if (data) {
+        alert('Lỗi: ' + data.message);
+      }
+    }
+
+    async function updateSellerQuota(id, current) {
+      const val = prompt('Nhập hạn mức số Key tối đa cho đại lý này (0 = Không giới hạn):', current);
+      if (val === null) return;
+      const max_keys = parseInt(val);
+      if (isNaN(max_keys)) return alert('Hạn mức phải là số nguyên');
+      const data = await apiCall('/api/admin/sellers/' + id + '/quota', 'POST', { max_keys });
+      if (data && data.success) {
+        alert('Đã cập nhật Quota thành công!');
+        loadSellers();
+      }
+    }
+
+    async function deleteSeller(id, username) {
+      if (!confirm('Xóa vĩnh viễn đại lý ' + username + '?')) return;
+      const data = await apiCall('/api/admin/sellers/' + id, 'DELETE');
+      if (data && data.success) {
+        alert('Đã xóa đại lý thành công');
+        loadSellers();
+      }
+    }
+  </script>
+</body>
+</html>

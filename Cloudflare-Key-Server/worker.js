@@ -325,7 +325,11 @@ async function activateOrLoginKey(db, key, deviceId, deviceName, product = null)
   if (license.status === 'UNUSED') {
     const durationDays = license.duration_days ?? 30;
     let expiresAt;
-    if (durationDays === -1) {
+    if (license.note && license.note.includes('hours:')) {
+      const matchHours = license.note.match(/hours:(\d+)/);
+      const h = matchHours ? parseInt(matchHours[1]) : 2;
+      expiresAt = new Date(Date.now() + h * 3600000).toISOString();
+    } else if (durationDays === -1) {
       expiresAt = '2099-12-31T23:59:59.000Z';
     } else {
       const exp = new Date();
@@ -454,6 +458,47 @@ export default {
         });
       } catch (err) {
         return sendError('SERVER_ERROR', err.message || 'Lỗi xử lý kích hoạt', 500);
+      }
+    }
+
+    // 3.1 Free Trial Key Generation (Used by getkey-dnxtweaks.pages.dev)
+    if (path === '/api/generate-free-key' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const tier = (body.tier || 'all').trim().toLowerCase();
+        const hours = parseInt(body.hours ?? 2);
+
+        let modules = ['aimlock', 'sensitive', 'regedit'];
+        if (tier === 'aimlock') modules = ['aimlock'];
+        else if (tier === 'sensitive') modules = ['sensitive'];
+        else if (tier === 'regedit') modules = ['regedit'];
+        else if (Array.isArray(body.modules)) modules = body.modules;
+
+        const key = generateLicenseKey(modules);
+        const allowedModulesStr = modules.join(',');
+        const note = `Free Trial ${hours}H - hours:${hours}`;
+        const product = tier === 'all' ? 'DNTWEAKS-VIP-ALL' : `DNTWEAKS-${tier.toUpperCase()}`;
+
+        await env.DB.prepare(`
+          INSERT INTO licenses (
+            key, product, tier, allowed_modules, duration_days, max_devices, note, status, created_by, created_at
+          ) VALUES (?, ?, ?, ?, 1, 1, ?, 'UNUSED', 'free_system', CURRENT_TIMESTAMP)
+        `).bind(key, product, tier, allowedModulesStr, note).run();
+
+        const tierInfo = parseLicenseModules({ tier, allowed_modules: allowedModulesStr, product });
+
+        return jsonResponse({
+          ok: true,
+          success: true,
+          key,
+          tier: tierInfo.tier,
+          tierName: tierInfo.tierName,
+          allowedModules: tierInfo.allowedModules,
+          hours,
+          duration: `${hours} Giờ Trải Nghiệm`
+        });
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message || 'Lỗi tạo key miễn phí', 500);
       }
     }
 
