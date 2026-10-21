@@ -37,7 +37,6 @@ struct ContentView: View {
 
     @State private var showSettings = false
     @State private var showLogs = false
-    @State private var selectedMainSection = "apps"
 
     var body: some View {
         Group {
@@ -75,13 +74,7 @@ struct ContentView: View {
                             KernelStatusCard()
                             PatchStoreSummaryCard()
 
-                            MainSectionSwitcher(selectedSection: $selectedMainSection)
-
-                            if selectedMainSection == "apps" {
-                                AppManagementSection()
-                            } else {
-                                RegeditDashboardSectionView()
-                            }
+                            ExternalIOSDashboardView()
                         }
                         .padding(.vertical, 16)
                         .padding(.bottom, 36)
@@ -623,7 +616,7 @@ struct AppDetailView: View {
     @State private var passwordPromptItem: PatchLibraryItem?
     @State private var enteredPassword = ""
 
-    private let tabs = ["Patches", "🎯 Regedit", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
+    private let tabs = ["Patches", "🎯 External iOS", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
 
     private var appPatches: [PatchLibraryItem] {
         patchStore.items.filter { item in
@@ -708,8 +701,8 @@ struct AppDetailView: View {
                     VStack(spacing: 16) {
                         if selectedTab == "Patches" {
                             patchTabContent
-                        } else if selectedTab == "🎯 Regedit" {
-                            RegeditGameSectionView(app: app)
+                        } else if selectedTab == "🎯 External iOS" {
+                            ExternalIOSGameSectionView(app: app)
                         } else if selectedTab == "DNS AntiBan" {
                             DNSSectionView(title: "CẤU HÌNH DNS ANTIBAN")
                         } else if selectedTab == "Dọn Dẹp" {
@@ -1561,99 +1554,22 @@ func freeDiskSpace() -> String {
     }
 }
 
-// MARK: - Main Section Switcher (Apps vs Regedit VIP)
-struct MainSectionSwitcher: View {
-    @Binding var selectedSection: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                    selectedSection = "apps"
-                }
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.grid.2x2.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("📱 ỨNG DỤNG")
-                        .font(.system(size: 12, weight: .heavy))
-                }
-                .foregroundColor(selectedSection == "apps" ? .black : .white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    Group {
-                        if selectedSection == "apps" {
-                            LinearGradient(
-                                colors: [Color(red: 0.0, green: 0.85, blue: 0.95), Color(red: 0.0, green: 0.6, blue: 0.95)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        } else {
-                            Color.white.opacity(0.04)
-                        }
-                    }
-                )
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(selectedSection == "apps" ? Color.cyan.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                    selectedSection = "regedit"
-                }
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "scope")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("🎯 REGEDIT VIP")
-                        .font(.system(size: 12, weight: .heavy))
-
-                    Text("V1-V5")
-                        .font(.system(size: 9, weight: .black))
-                        .foregroundColor(selectedSection == "regedit" ? .black : .red)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(selectedSection == "regedit" ? Color.black.opacity(0.2) : Color.red.opacity(0.2))
-                        .cornerRadius(5)
-                }
-                .foregroundColor(selectedSection == "regedit" ? .black : .white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    Group {
-                        if selectedSection == "regedit" {
-                            LinearGradient(
-                                colors: [Color(red: 1.0, green: 0.35, blue: 0.2), Color(red: 1.0, green: 0.65, blue: 0.0)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        } else {
-                            Color.white.opacity(0.04)
-                        }
-                    }
-                )
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(selectedSection == "regedit" ? Color.orange.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
-// MARK: - Regedit Dashboard Section View
-struct RegeditDashboardSectionView: View {
-    @ObservedObject private var regeditManager = RegeditManager.shared
+// MARK: - External iOS Dashboard View
+struct ExternalIOSDashboardView: View {
+    @ObservedObject private var manager = RegeditManager.shared
+    @State private var selectedSubTab: ExternalCategory = .aimlock
+    @State private var selectedGameBundleId: String? = nil // nil = Tất cả game
     @State private var toastMessage: String?
     @State private var showToast = false
+    @State private var syncAlertMessage = ""
+    @State private var showSyncAlert = false
+
+    private var currentTargetName: String {
+        if let id = selectedGameBundleId, let match = defaultAppTargets.first(where: { $0.bundleId == id }) {
+            return match.name
+        }
+        return "Tất Cả Game"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1663,56 +1579,102 @@ struct RegeditDashboardSectionView: View {
                     Rectangle()
                         .fill(
                             LinearGradient(
-                                colors: [Color.red, Color.orange, Color.yellow],
+                                colors: [Color.cyan, Color.purple, Color.orange],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
-                        .frame(width: 4, height: 18)
+                        .frame(width: 4, height: 20)
                         .cornerRadius(2)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("BỘ TINH CHỈNH REGEDIT VIP (V1 - V5)")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundColor(.white)
-                        Text("Aim Lock • Touch Sampling • Hitbox Magnet • Zero Delay")
-                            .font(.system(size: 10, weight: .medium))
+                        HStack(spacing: 6) {
+                            Text("EXTERNAL IOS")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(.white)
+                            Text("PRO VIP")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.cyan)
+                                .cornerRadius(4)
+                        }
+                        Text("Aimlock V1-V5 & Sensitive V1-V5 Engine")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.gray)
                     }
                 }
 
                 Spacer()
 
-                // Active counter badge
+                // Overall active count
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(regeditManager.activePresets.isEmpty ? Color.gray : Color.green)
+                        .fill(manager.activePresets.isEmpty ? Color.gray : Color.green)
                         .frame(width: 7, height: 7)
-                    Text("\(regeditManager.activePresets.count)/5 ON")
+                    Text("\(manager.activePresets.count)/10 ON")
                         .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                        .foregroundColor(regeditManager.activePresets.isEmpty ? .gray : .green)
+                        .foregroundColor(manager.activePresets.isEmpty ? .gray : .green)
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color.white.opacity(0.05))
                 .cornerRadius(8)
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, 20)
+
+            // Target Game Selector Pill Carousel
+            VStack(alignment: .leading, spacing: 6) {
+                Text("MỤC TIÊU ÁP DỤNG:")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 20)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        Button(action: { selectedGameBundleId = nil }) {
+                            Text("🌐 Tất Cả Game")
+                                .font(.system(size: 11, weight: selectedGameBundleId == nil ? .heavy : .medium))
+                                .foregroundColor(selectedGameBundleId == nil ? .black : .white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(selectedGameBundleId == nil ? Color.cyan : Color.white.opacity(0.06))
+                                .cornerRadius(20)
+                        }
+                        .buttonStyle(.plain)
+
+                        ForEach(defaultAppTargets) { target in
+                            Button(action: { selectedGameBundleId = target.bundleId }) {
+                                Text(target.name)
+                                    .font(.system(size: 11, weight: selectedGameBundleId == target.bundleId ? .heavy : .medium))
+                                    .foregroundColor(selectedGameBundleId == target.bundleId ? .black : .white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(selectedGameBundleId == target.bundleId ? Color.cyan : Color.white.opacity(0.06))
+                                    .cornerRadius(20)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
 
             // Real-Time Hardware Performance HUD
-            RegeditPerformanceHUD()
+            ExternalPerformanceHUD()
                 .padding(.horizontal, 20)
 
-            // Master Action Buttons (Full Combo / Reset)
-            HStack(spacing: 12) {
+            // Master Control Buttons
+            HStack(spacing: 10) {
                 Button(action: {
-                    regeditManager.activateAll()
-                    triggerToast("Đã kích hoạt Full Combo Regedit V1 - V5!")
+                    manager.activateAll(for: selectedGameBundleId)
+                    triggerToast("Đã bật toàn bộ External iOS cho \(currentTargetName)!")
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
-                            .font(.system(size: 13, weight: .bold))
-                        Text("BẬT FULL COMBO")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("BẬT TOÀN BỘ")
                             .font(.system(size: 11, weight: .black))
                     }
                     .foregroundColor(.white)
@@ -1720,28 +1682,28 @@ struct RegeditDashboardSectionView: View {
                     .padding(.vertical, 12)
                     .background(
                         LinearGradient(
-                            colors: [Color.red.opacity(0.85), Color.orange.opacity(0.85)],
+                            colors: [Color.cyan.opacity(0.9), Color.blue.opacity(0.9)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .cornerRadius(12)
-                    .shadow(color: Color.red.opacity(0.35), radius: 8, x: 0, y: 3)
+                    .shadow(color: Color.cyan.opacity(0.3), radius: 8, x: 0, y: 3)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: {
-                    regeditManager.resetAll()
-                    triggerToast("Đã tắt và đặt lại toàn bộ Regedit!")
+                    manager.resetAll(for: selectedGameBundleId)
+                    triggerToast("Đã đặt lại toàn bộ External iOS cho \(currentTargetName)!")
                 }) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("ĐẶT LẠI GỐC")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("ĐẶT LẠI")
                             .font(.system(size: 11, weight: .bold))
                     }
                     .foregroundColor(.gray)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 80)
                     .padding(.vertical, 12)
                     .background(Color.white.opacity(0.05))
                     .cornerRadius(12)
@@ -1751,13 +1713,182 @@ struct RegeditDashboardSectionView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                Button(action: {
+                    if let id = selectedGameBundleId {
+                        let res = manager.syncContainer(bundleId: id)
+                        syncAlertMessage = res.message
+                    } else {
+                        var successCount = 0
+                        for target in defaultAppTargets {
+                            let res = manager.syncContainer(bundleId: target.bundleId)
+                            if res.success { successCount += 1 }
+                        }
+                        syncAlertMessage = "Đã đồng bộ cấu hình External iOS vào \(successCount)/\(defaultAppTargets.count) Container ứng dụng!"
+                    }
+                    showSyncAlert = true
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("LƯU TỆP")
+                            .font(.system(size: 11, weight: .black))
+                    }
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .background(Color.green)
+                    .cornerRadius(12)
+                    .shadow(color: Color.green.opacity(0.25), radius: 6, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
 
-            // Preset Cards List (V1 -> V5)
+            // CATEGORY SWITCHER: AIMLOCK V1-V5 VS SENSITIVE V1-V5
+            HStack(spacing: 10) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        selectedSubTab = .aimlock
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "scope")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("🎯 AIMLOCK")
+                            .font(.system(size: 12, weight: .heavy))
+                        Text("\(manager.activeAimlockCount(for: selectedGameBundleId))/5")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundColor(selectedSubTab == .aimlock ? .black : .cyan)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(selectedSubTab == .aimlock ? Color.black.opacity(0.2) : Color.cyan.opacity(0.15))
+                            .cornerRadius(4)
+                    }
+                    .foregroundColor(selectedSubTab == .aimlock ? .black : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(
+                        Group {
+                            if selectedSubTab == .aimlock {
+                                LinearGradient(
+                                    colors: [Color.cyan, Color.blue],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            } else {
+                                Color.white.opacity(0.04)
+                            }
+                        }
+                    )
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedSubTab == .aimlock ? Color.cyan.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        selectedSubTab = .sensitive
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("⚡ SENSITIVE")
+                            .font(.system(size: 12, weight: .heavy))
+                        Text("\(manager.activeSensitiveCount(for: selectedGameBundleId))/5")
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .foregroundColor(selectedSubTab == .sensitive ? .black : .orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(selectedSubTab == .sensitive ? Color.black.opacity(0.2) : Color.orange.opacity(0.15))
+                            .cornerRadius(4)
+                    }
+                    .foregroundColor(selectedSubTab == .sensitive ? .black : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(
+                        Group {
+                            if selectedSubTab == .sensitive {
+                                LinearGradient(
+                                    colors: [Color.orange, Color.red],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            } else {
+                                Color.white.opacity(0.04)
+                            }
+                        }
+                    )
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedSubTab == .sensitive ? Color.orange.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+
+            // Sub-category Quick Action Bar
+            HStack {
+                Text(selectedSubTab == .aimlock ? "BỘ KHÓA TÂM AIMLOCK V1 - V5" : "BỘ ĐỘ NHẠY SENSITIVE V1 - V5")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Button(action: {
+                    if selectedSubTab == .aimlock {
+                        manager.activateAllAimlock(for: selectedGameBundleId)
+                        triggerToast("Đã bật toàn bộ Aimlock V1 - V5!")
+                    } else {
+                        manager.activateAllSensitive(for: selectedGameBundleId)
+                        triggerToast("Đã bật toàn bộ Sensitive V1 - V5!")
+                    }
+                }) {
+                    Text("Bật Tất Cả")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(selectedSubTab == .aimlock ? .cyan : .orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(6)
+                }
+
+                Button(action: {
+                    if selectedSubTab == .aimlock {
+                        manager.resetAllAimlock(for: selectedGameBundleId)
+                        triggerToast("Đã tắt toàn bộ Aimlock V1 - V5!")
+                    } else {
+                        manager.resetAllSensitive(for: selectedGameBundleId)
+                        triggerToast("Đã tắt toàn bộ Sensitive V1 - V5!")
+                    }
+                }) {
+                    Text("Tắt Hết")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(6)
+                }
+            }
+            .padding(.horizontal, 22)
+
+            // Cards List
             VStack(spacing: 14) {
-                ForEach(allRegeditPresets) { preset in
-                    RegeditPresetCard(preset: preset, bundleId: nil)
+                if selectedSubTab == .aimlock {
+                    ForEach(allAimlockPresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
+                    }
+                } else {
+                    ForEach(allSensitivePresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -1783,6 +1914,9 @@ struct RegeditDashboardSectionView: View {
                 Spacer()
             }
         )
+        .alert(isPresented: $showSyncAlert) {
+            Alert(title: Text("Thông Báo Container"), message: Text(syncAlertMessage), dismissButton: .default(Text("OK")))
+        }
     }
 
     private func triggerToast(_ msg: String) {
@@ -1794,14 +1928,14 @@ struct RegeditDashboardSectionView: View {
     }
 }
 
-// MARK: - Regedit Performance HUD
-struct RegeditPerformanceHUD: View {
+// MARK: - External iOS Performance HUD
+struct ExternalPerformanceHUD: View {
     var body: some View {
         HStack(spacing: 8) {
             HUDMetricItem(label: "POLLING", value: "240Hz", color: .cyan)
             HUDMetricItem(label: "LATENCY", value: "0.001ms", color: .green)
             HUDMetricItem(label: "DPI CURVE", value: "1200 DPI", color: .orange)
-            HUDMetricItem(label: "ACCEL", value: "Dynamic Y", color: .purple)
+            HUDMetricItem(label: "DYNAMIC Y", value: "Zero Delay", color: .purple)
         }
         .padding(12)
         .background(Color(red: 0.07, green: 0.09, blue: 0.14))
@@ -1831,23 +1965,23 @@ struct HUDMetricItem: View {
     }
 }
 
-// MARK: - Regedit Preset Card
-struct RegeditPresetCard: View {
-    let preset: RegeditPreset
+// MARK: - External Preset Card (Aimlock & Sensitive)
+struct ExternalPresetCard: View {
+    let preset: ExternalPreset
     let bundleId: String?
-    @ObservedObject private var regeditManager = RegeditManager.shared
+    @ObservedObject private var manager = RegeditManager.shared
 
     private var isActive: Bool {
-        regeditManager.isEnabled(presetId: preset.id, for: bundleId)
+        manager.isEnabled(presetId: preset.id, for: bundleId)
     }
 
     private var currentSens: Double {
-        regeditManager.sensitivity(presetId: preset.id, for: bundleId)
+        manager.sensitivity(presetId: preset.id, for: bundleId)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header Row: Icon, Title, Badges, Toggle
+            // Header: Icon, Titles, Badges, Toggle
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     Circle()
@@ -1889,9 +2023,9 @@ struct RegeditPresetCard: View {
 
                 Spacer()
 
-                // Custom Neon Toggle Switch
+                // Neon Toggle Switch
                 Button(action: {
-                    _ = regeditManager.toggle(preset: preset, for: bundleId)
+                    _ = manager.toggle(preset: preset, for: bundleId)
                 }) {
                     ZStack {
                         Capsule()
@@ -1927,10 +2061,10 @@ struct RegeditPresetCard: View {
                 }
             }
 
-            // Sensitivity Adjustment Slider
+            // Slider: Lock Force / Sensitivity Adjustment
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("ĐỘ NHẠY KÉO TÂM (SENSITIVITY)")
+                    Text(preset.category == .aimlock ? "LỰC HÚT TÂM (LOCK INTENSITY)" : "ĐỘ NHẠY KÉO TÂM (SENSITIVITY)")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.gray)
 
@@ -1945,7 +2079,7 @@ struct RegeditPresetCard: View {
                     value: Binding(
                         get: { self.currentSens },
                         set: { val in
-                            regeditManager.setSensitivity(val, presetId: preset.id, for: bundleId)
+                            manager.setSensitivity(val, presetId: preset.id, for: bundleId)
                         }
                     ),
                     in: 1.0...3.0,
@@ -1960,7 +2094,7 @@ struct RegeditPresetCard: View {
 
                     Spacer()
 
-                    Text("Trục Y (Đầu): \(String(format: "%.2fx", currentSens * preset.yRatio))")
+                    Text("Trục Y (Head Lock): \(String(format: "%.2fx", currentSens * preset.yRatio))")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .foregroundColor(preset.accentColor)
                 }
@@ -1980,20 +2114,17 @@ struct RegeditPresetCard: View {
     }
 }
 
-// MARK: - Regedit Game Section View (Per-Game Tab)
-struct RegeditGameSectionView: View {
+// MARK: - External iOS Game Section View (Per-Game Tab)
+struct ExternalIOSGameSectionView: View {
     let app: AppTarget
-    @ObservedObject private var regeditManager = RegeditManager.shared
+    @ObservedObject private var manager = RegeditManager.shared
+    @State private var selectedSubTab: ExternalCategory = .aimlock
     @State private var syncStatusMessage: String?
     @State private var showSyncAlert = false
     @State private var syncSuccess = false
 
     private var containerPath: String? {
         ContainerStore.resolveAppContainerPath(bundleID: app.bundleId)
-    }
-
-    private var activeCount: Int {
-        allRegeditPresets.filter { regeditManager.isEnabled(presetId: $0.id, for: app.bundleId) }.count
     }
 
     var body: some View {
@@ -2009,7 +2140,7 @@ struct RegeditGameSectionView: View {
                         .font(.system(size: 11, weight: .heavy))
                         .foregroundColor(containerPath != nil ? .green : .yellow)
 
-                    Text(containerPath != nil ? "Cấu hình tự động ghi vào Documents/DNTWEAKS_Regedit.plist" : "Mở game một lần trên máy để iOS tạo thư mục Sandbox.")
+                    Text(containerPath != nil ? "Cấu hình tự động ghi vào Documents/DNTWEAKS_ExternalIOS.plist" : "Mở game một lần trên máy để iOS tạo thư mục Sandbox.")
                         .font(.system(size: 10))
                         .foregroundColor(.gray)
                 }
@@ -2027,10 +2158,10 @@ struct RegeditGameSectionView: View {
             // Header Controls
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("CẤU HÌNH CHO \(app.name.uppercased())")
+                    Text("EXTERNAL CHO \(app.name.uppercased())")
                         .font(.system(size: 13, weight: .black))
                         .foregroundColor(.white)
-                    Text("\(activeCount)/5 Tinh Chỉnh Đang Kích Hoạt")
+                    Text("Aimlock: \(manager.activeAimlockCount(for: app.bundleId))/5 • Sensitive: \(manager.activeSensitiveCount(for: app.bundleId))/5")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.cyan)
                 }
@@ -2038,7 +2169,7 @@ struct RegeditGameSectionView: View {
                 Spacer()
 
                 Button(action: {
-                    let res = regeditManager.syncContainer(bundleId: app.bundleId)
+                    let res = manager.syncContainer(bundleId: app.bundleId)
                     syncSuccess = res.success
                     syncStatusMessage = res.message
                     showSyncAlert = true
@@ -2059,7 +2190,7 @@ struct RegeditGameSectionView: View {
             // Quick action buttons for this game
             HStack(spacing: 10) {
                 Button(action: {
-                    regeditManager.activateAll(for: app.bundleId)
+                    manager.activateAll(for: app.bundleId)
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
@@ -2069,13 +2200,13 @@ struct RegeditGameSectionView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color.red.opacity(0.8))
+                    .background(Color.cyan.opacity(0.8))
                     .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
 
                 Button(action: {
-                    regeditManager.resetAll(for: app.bundleId)
+                    manager.resetAll(for: app.bundleId)
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "xmark.circle")
@@ -2091,10 +2222,41 @@ struct RegeditGameSectionView: View {
                 .buttonStyle(.plain)
             }
 
-            // List of presets for this specific game
+            // Sub Tab Switcher: Aimlock vs Sensitive
+            HStack(spacing: 10) {
+                Button(action: { selectedSubTab = .aimlock }) {
+                    Text("🎯 AIMLOCK V1-V5")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(selectedSubTab == .aimlock ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(selectedSubTab == .aimlock ? Color.cyan : Color.white.opacity(0.05))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: { selectedSubTab = .sensitive }) {
+                    Text("⚡ SENSITIVE V1-V5")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(selectedSubTab == .sensitive ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(selectedSubTab == .sensitive ? Color.orange : Color.white.opacity(0.05))
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Preset Cards List
             VStack(spacing: 14) {
-                ForEach(allRegeditPresets) { preset in
-                    RegeditPresetCard(preset: preset, bundleId: app.bundleId)
+                if selectedSubTab == .aimlock {
+                    ForEach(allAimlockPresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: app.bundleId)
+                    }
+                } else {
+                    ForEach(allSensitivePresets) { preset in
+                        ExternalPresetCard(preset: preset, bundleId: app.bundleId)
+                    }
                 }
             }
         }
