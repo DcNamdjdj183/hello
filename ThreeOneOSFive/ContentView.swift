@@ -126,13 +126,28 @@ struct ContentView: View {
             .navigationBarTitle("", displayMode: .inline)
         }
         .navigationViewStyle(.stack)
+        .environmentObject(licenseManager)
     }
 }
 
 // MARK: - Header & Device Info
 struct DeviceInfoHeader: View {
+    @EnvironmentObject private var licenseManager: LicenseManager
     @Binding var showSettings: Bool
     @Binding var showLogs: Bool
+
+    private var tierBadgeColor: (bg: Color, text: Color) {
+        switch licenseManager.tier {
+        case .all:
+            return (Color.cyan.opacity(0.15), Color.cyan)
+        case .aimlock:
+            return (Color.cyan.opacity(0.2), Color.cyan)
+        case .sensitive:
+            return (Color.orange.opacity(0.2), Color.orange)
+        case .regedit:
+            return (Color.yellow.opacity(0.2), Color.yellow)
+        }
+    }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -157,13 +172,13 @@ struct DeviceInfoHeader: View {
                             .cornerRadius(6)
                             .foregroundColor(.white)
 
-                        Text("PRO VIP")
+                        Text(licenseManager.tierName)
                             .font(.system(size: 9, weight: .bold, design: .rounded))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Color.white.opacity(0.08))
+                            .background(tierBadgeColor.bg)
                             .cornerRadius(5)
-                            .foregroundColor(.cyan)
+                            .foregroundColor(tierBadgeColor.text)
                     }
 
                     Text("Aimlock • Sensitive • Regedit Suite")
@@ -265,7 +280,7 @@ struct KeyStatusCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("BẢN QUYỀN VIP")
+                    Text(licenseManager.tierName)
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.purple)
 
@@ -1802,6 +1817,7 @@ func freeDiskSpace() -> String {
 
 // MARK: - External iOS Dashboard View
 struct ExternalIOSDashboardView: View {
+    @EnvironmentObject private var licenseManager: LicenseManager
     @ObservedObject private var manager = RegeditManager.shared
     @State private var selectedSubTab: ExternalCategory = .aimlock
     @State private var selectedGameBundleId: String? = nil // nil = Tất cả game
@@ -2001,10 +2017,13 @@ struct ExternalIOSDashboardView: View {
                 }) {
                     VStack(spacing: 3) {
                         HStack(spacing: 4) {
-                            Image(systemName: "scope")
+                            Image(systemName: licenseManager.canAccess(category: .aimlock) ? "scope" : "lock.fill")
                                 .font(.system(size: 11, weight: .bold))
                             Text("AIMLOCK")
                                 .font(.system(size: 11, weight: .heavy))
+                            if !licenseManager.canAccess(category: .aimlock) {
+                                Image(systemName: "lock.fill").font(.system(size: 8))
+                            }
                         }
                         Text("\(manager.activeAimlockCount(for: selectedGameBundleId))/5 ON")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
@@ -2038,10 +2057,13 @@ struct ExternalIOSDashboardView: View {
                 }) {
                     VStack(spacing: 3) {
                         HStack(spacing: 4) {
-                            Image(systemName: "bolt.fill")
+                            Image(systemName: licenseManager.canAccess(category: .sensitive) ? "bolt.fill" : "lock.fill")
                                 .font(.system(size: 11, weight: .bold))
                             Text("SENSITIVE")
                                 .font(.system(size: 11, weight: .heavy))
+                            if !licenseManager.canAccess(category: .sensitive) {
+                                Image(systemName: "lock.fill").font(.system(size: 8))
+                            }
                         }
                         Text("\(manager.activeSensitiveCount(for: selectedGameBundleId))/5 ON")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
@@ -2075,10 +2097,13 @@ struct ExternalIOSDashboardView: View {
                 }) {
                     VStack(spacing: 3) {
                         HStack(spacing: 4) {
-                            Image(systemName: "slider.horizontal.3")
+                            Image(systemName: licenseManager.canAccess(category: .regedit) ? "slider.horizontal.3" : "lock.fill")
                                 .font(.system(size: 11, weight: .bold))
                             Text("REGEDIT")
                                 .font(.system(size: 11, weight: .heavy))
+                            if !licenseManager.canAccess(category: .regedit) {
+                                Image(systemName: "lock.fill").font(.system(size: 8))
+                            }
                         }
                         Text("\(manager.activeRegeditCount(for: selectedGameBundleId))/5 ON")
                             .font(.system(size: 9, weight: .black, design: .monospaced))
@@ -2115,6 +2140,10 @@ struct ExternalIOSDashboardView: View {
                 Spacer()
 
                 Button(action: {
+                    guard licenseManager.canAccess(category: selectedSubTab) else {
+                        triggerToast("Key của bạn là [\(licenseManager.tierName)]. Không có quyền bật mục này! Cần nâng cấp Key VIP ALL.")
+                        return
+                    }
                     let groupName: String
                     if selectedSubTab == .aimlock {
                         manager.activateAllAimlock(for: selectedGameBundleId)
@@ -2208,6 +2237,11 @@ struct ExternalIOSDashboardView: View {
         .alert(isPresented: $showSyncAlert) {
             Alert(title: Text("Thông Báo Container"), message: Text(syncAlertMessage), dismissButton: .default(Text("OK")))
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DNTWEAKS_TriggerTierLockedToast"))) { notif in
+            if let msg = notif.object as? String {
+                triggerToast(msg)
+            }
+        }
     }
 
     private func triggerToast(_ msg: String) {
@@ -2256,11 +2290,16 @@ struct HUDMetricItem: View {
     }
 }
 
-// MARK: - External Preset Card (Aimlock & Sensitive)
+// MARK: - External Preset Card (Aimlock & Sensitive & Regedit)
 struct ExternalPresetCard: View {
     let preset: ExternalPreset
     let bundleId: String?
+    @EnvironmentObject private var licenseManager: LicenseManager
     @ObservedObject private var manager = RegeditManager.shared
+
+    private var isPermitted: Bool {
+        licenseManager.canAccess(category: preset.category)
+    }
 
     private var isActive: Bool {
         manager.isEnabled(presetId: preset.id, for: bundleId)
@@ -2279,43 +2318,60 @@ struct ExternalPresetCard: View {
                         .fill(preset.accentColor.opacity(isActive ? 0.25 : 0.12))
                         .frame(width: 44, height: 44)
 
-                    Image(systemName: preset.icon)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(isActive ? preset.accentColor : .gray)
+                    Image(systemName: isPermitted ? preset.icon : "lock.fill")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundColor(isPermitted ? (isActive ? preset.accentColor : .gray) : .gray.opacity(0.6))
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(preset.title)
                             .font(.system(size: 15, weight: .black))
-                            .foregroundColor(.white)
+                            .foregroundColor(isPermitted ? .white : .gray)
 
                         Text("V\(preset.level)")
                             .font(.system(size: 9, weight: .black))
                             .foregroundColor(.black)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(preset.accentColor)
+                            .background(isPermitted ? preset.accentColor : Color.gray)
                             .cornerRadius(4)
 
-                        Text(preset.defaultDelay)
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(preset.accentColor)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(preset.accentColor.opacity(0.12))
-                            .cornerRadius(4)
+                        if !isPermitted {
+                            Text("KHÓA")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red.opacity(0.15))
+                                .cornerRadius(4)
+                        } else {
+                            Text(preset.defaultDelay)
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .foregroundColor(preset.accentColor)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(preset.accentColor.opacity(0.12))
+                                .cornerRadius(4)
+                        }
                     }
 
-                    Text(preset.subtitle)
+                    Text(isPermitted ? preset.subtitle : "Cần key \(preset.category == .aimlock ? "AIMLOCK" : (preset.category == .sensitive ? "SENSITIVE" : "REGEDIT")) hoặc VIP ALL")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.gray)
+                        .foregroundColor(isPermitted ? .gray : .red.opacity(0.8))
                 }
 
                 Spacer()
 
-                // Neon Toggle Switch
+                // Neon Toggle Switch or Lock Badge
                 Button(action: {
+                    guard isPermitted else {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerTierLockedToast"),
+                            object: "Key của bạn là [\(licenseManager.tierName)]. Không thể dùng mục này! Vui lòng nâng cấp key VIP ALL."
+                        )
+                        return
+                    }
                     let newState = manager.toggle(preset: preset, for: bundleId)
                     if newState {
                         NotificationCenter.default.post(
@@ -2324,16 +2380,30 @@ struct ExternalPresetCard: View {
                         )
                     }
                 }) {
-                    ZStack {
-                        Capsule()
-                            .fill(isActive ? preset.accentColor : Color.white.opacity(0.15))
-                            .frame(width: 48, height: 26)
+                    if isPermitted {
+                        ZStack {
+                            Capsule()
+                                .fill(isActive ? preset.accentColor : Color.white.opacity(0.15))
+                                .frame(width: 48, height: 26)
 
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 22, height: 22)
-                            .offset(x: isActive ? 11 : -11)
-                            .shadow(color: Color.black.opacity(0.3), radius: 2)
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 22, height: 22)
+                                .offset(x: isActive ? 11 : -11)
+                                .shadow(color: Color.black.opacity(0.3), radius: 2)
+                        }
+                    } else {
+                        HStack(spacing: 3) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("LOCK")
+                                .font(.system(size: 9, weight: .black))
+                        }
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color.white.opacity(0.06))
+                        .cornerRadius(8)
                     }
                 }
                 .buttonStyle(.plain)
@@ -2414,6 +2484,7 @@ struct ExternalPresetCard: View {
 // MARK: - External iOS Game Section View (Per-Game Tab)
 struct ExternalIOSGameSectionView: View {
     let app: AppTarget
+    @EnvironmentObject private var licenseManager: LicenseManager
     @ObservedObject private var manager = RegeditManager.shared
     @State private var selectedSubTab: ExternalCategory = .aimlock
     @State private var syncStatusMessage: String?
@@ -2487,15 +2558,35 @@ struct ExternalIOSGameSectionView: View {
             // Quick action buttons for this game
             HStack(spacing: 10) {
                 Button(action: {
-                    manager.activateAll(for: app.bundleId)
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
-                        object: "Tất cả tính năng (\(app.name))"
-                    )
+                    if licenseManager.tier == .all {
+                        manager.activateAll(for: app.bundleId)
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                            object: "Tất cả tính năng (\(app.name))"
+                        )
+                    } else if licenseManager.tier == .aimlock {
+                        manager.activateAllAimlock(for: app.bundleId)
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                            object: "Aimlock V1 - V5 (\(app.name))"
+                        )
+                    } else if licenseManager.tier == .sensitive {
+                        manager.activateAllSensitive(for: app.bundleId)
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                            object: "Sensitive V1 - V5 (\(app.name))"
+                        )
+                    } else if licenseManager.tier == .regedit {
+                        manager.activateAllRegedit(for: app.bundleId)
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("DNTWEAKS_TriggerAppleRestartAlert"),
+                            object: "Regedit V1 - V5 (\(app.name))"
+                        )
+                    }
                 }) {
                     HStack(spacing: 6) {
                         Image(systemName: "bolt.fill")
-                        Text("Bật Tất Cả Cho \(app.name)")
+                        Text(licenseManager.tier == .all ? "Bật Tất Cả Cho \(app.name)" : "Bật \(licenseManager.tierName) Cho \(app.name)")
                     }
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)

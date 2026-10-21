@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhận Key DNTWEAKS External iOS - Cổng Cấp Key Chính Thức</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --bg-base: #040711;
+            --surface: rgba(14, 22, 38, 0.75);
+            --border-glow: rgba(0, 229, 255, 0.25);
+            --primary: #00e5ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 229, 255, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 45%),
+                linear-gradient(to bottom, #040711, #080d1a, #040711);
+        }
+
+        .glass-card {
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-glow);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 229, 255, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.5), transparent);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .neon-glow {
+            filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.45));
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.03); }
+        }
+        .ambient-glow {
+            animation: pulseGlow 6s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 select-none">
+
+    <!-- Ambient Glow Backgrounds -->
+    <div class="fixed w-[500px] h-[500px] rounded-full bg-cyan-500/10 blur-[120px] -top-32 -left-32 ambient-glow pointer-events-none"></div>
+    <div class="fixed w-[450px] h-[450px] rounded-full bg-purple-600/15 blur-[120px] -bottom-32 -right-32 ambient-glow pointer-events-none" style="animation-delay: -3s;"></div>
+
+    <!-- Main Card Container -->
+    <div class="w-full max-w-[460px] z-10">
+        
+        <div class="glass-card p-6 md:p-8 text-center">
+
+            <!-- Logo Header -->
+            <div class="relative mb-5 flex justify-center">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-400 via-blue-600 to-indigo-600 p-[2px] neon-glow">
+                    <div class="w-full h-full bg-[#070b16] rounded-2xl flex items-center justify-center">
+                        <i class="fas fa-bolt text-3xl text-cyan-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Titles -->
+            <h1 class="text-2xl font-black tracking-wide text-white">DNTWEAKS EXTERNAL IOS</h1>
+            <p class="text-xs text-gray-400 mt-1 mb-6">Cổng Nhận License Key Kích Hoạt Ứng Dụng</p>
+
+            <!-- ========================================== -->
+            <!-- VIEW 1: CHƯA CÓ KEY (NÚT LẤY KEY) -->
+            <!-- ========================================== -->
+            <div id="view-get-key" class="space-y-4">
+                
+                <!-- Hộp chọn loại key thử nghiệm -->
+                <div class="bg-black/30 border border-white/10 rounded-2xl p-4 text-left">
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        Chọn gói thử nghiệm:
+                    </label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <button onclick="selectTier('all')" id="tier-btn-all" class="p-2.5 rounded-xl border border-cyan-400 bg-cyan-500/15 text-cyan-400 font-bold flex items-center space-x-2 transition-all">
+                            <span>💎</span>
+                            <span class="truncate">VIP Toàn Bộ</span>
+                        </button>
+                        <button onclick="selectTier('aimlock')" id="tier-btn-aimlock" class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 font-semibold flex items-center space-x-2 hover:border-white/20 transition-all">
+                            <span>🎯</span>
+                            <span class="truncate">Aimlock V1-V5</span>
+                        </button>
+                        <button onclick="selectTier('sensitive')" id="tier-btn-sensitive" class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 font-semibold flex items-center space-x-2 hover:border-white/20 transition-all">
+                            <span>⚡</span>
+                            <span class="truncate">Sensitive V1-V5</span>
+                        </button>
+                        <button onclick="selectTier('regedit')" id="tier-btn-regedit" class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 font-semibold flex items-center space-x-2 hover:border-white/20 transition-all">
+                            <span>⚙️</span>
+                            <span class="truncate">Regedit V1-V5</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tính năng cam kết -->
+                <div class="grid grid-cols-3 gap-2 py-1 text-center">
+                    <div class="p-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <i class="fas fa-shield-alt text-cyan-400 text-sm mb-1 block"></i>
+                        <span class="text-[10px] font-semibold text-gray-300 block">Anti-Ban</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <i class="fas fa-tachometer-alt text-emerald-400 text-sm mb-1 block"></i>
+                        <span class="text-[10px] font-semibold text-gray-300 block">120Hz Fast</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-white/[0.03] border border-white/5">
+                        <i class="fas fa-clock text-amber-400 text-sm mb-1 block"></i>
+                        <span class="text-[10px] font-semibold text-gray-300 block">Hạn Dùng 2H</span>
+                    </div>
+                </div>
+
+                <!-- Nút Lấy Key -->
+                <button onclick="handleGetKey()" id="btn-get-key" class="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-black font-black text-sm tracking-wider uppercase shadow-xl shadow-cyan-500/25 hover:opacity-95 active:scale-98 transition-all flex items-center justify-center space-x-2">
+                    <i class="fas fa-key"></i>
+                    <span>LẤY KEY MIỄN PHÍ NGAY</span>
+                </button>
+
+                <p class="text-[11px] text-gray-500 leading-relaxed">
+                    Vượt link quảng cáo ngắn để nhận mã kích hoạt bản quyền hoàn toàn miễn phí.
+                </p>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- VIEW 2: ĐÃ CÓ KEY (HIỂN THỊ KẾT QUẢ) -->
+            <!-- ========================================== -->
+            <div id="view-key-result" class="space-y-4 hidden">
+                
+                <div class="px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold inline-flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>ĐÃ TẠO KEY THÀNH CÔNG</span>
+                </div>
+
+                <!-- Hộp Hiển Thị Key Nổi Bật -->
+                <div class="bg-black/50 border-2 border-cyan-400/50 rounded-2xl p-4 shadow-inner">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">MÃ LICENSE KEY CỦA BẠN:</span>
+                    <div class="flex items-center justify-between bg-white/[0.04] p-3 rounded-xl border border-white/10 mt-1">
+                        <span id="display-key" class="mono text-base md:text-lg font-black text-cyan-300 tracking-wider select-all break-all text-left">
+                            DNT-ALL-XXXX-XXXX
+                        </span>
+                        <button onclick="copyKey()" id="btn-copy" class="ml-2 px-3 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold text-xs flex items-center space-x-1 transition-all">
+                            <i class="fas fa-copy"></i>
+                            <span id="copy-label">CHÉP</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-3 text-xs">
+                        <span class="text-gray-400">Phân hệ: <b id="display-tier-label" class="text-white">VIP ALL</b></span>
+                        <span class="text-gray-400">Hạn dùng: <b class="text-emerald-400">2 Giờ Trải Nghiệm</b></span>
+                    </div>
+                </div>
+
+                <!-- Các bước tiếp theo -->
+                <div class="text-left bg-white/[0.03] border border-white/10 rounded-2xl p-4 space-y-2 text-xs">
+                    <span class="font-bold text-gray-200 block text-[11px] uppercase tracking-wider mb-1">CÁCH KÍCH HOẠT VÀO APP:</span>
+                    <div class="flex items-start space-x-2 text-gray-300">
+                        <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">1</span>
+                        <span>Bấm nút <b>Sao Chép</b> mã key ở trên.</span>
+                    </div>
+                    <div class="flex items-start space-x-2 text-gray-300">
+                        <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">2</span>
+                        <span>Mở ứng dụng <b>DNTWEAKS EXTERNAL IOS</b> trên thiết bị của bạn.</span>
+                    </div>
+                    <div class="flex items-start space-x-2 text-gray-300">
+                        <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">3</span>
+                        <span>Dán key vào ô nhập và bấm <b>VERIFY AND CONTINUE</b> để kích hoạt.</span>
+                    </div>
+                </div>
+
+                <!-- Nút thao tác phụ -->
+                <button onclick="resetGetKeyView()" class="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
+                    ← Lấy Key Khác Hoặc Đổi Gói
+                </button>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="mt-6 pt-4 border-t border-white/5 text-[10px] text-gray-500 flex items-center justify-between">
+                <span>© 2026 DNTWEAKS</span>
+                <span>Server: dntweaks-key-server</span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Loading Spinner Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center hidden">
+        <div class="w-12 h-12 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs text-cyan-300 font-bold mt-4 tracking-wider">ĐANG TẠO KEY TỪ SERVER...</p>
+    </div>
+
+    <script>
+        // Cấu hình URL API Server mới của bạn
+        const API_BASE = "https://dntweaks-key-server.ddnstore.workers.dev";
+        const LINK4M_TOKEN = "6a2a8037954dcc5cae0cc8e8";
+
+        let selectedTier = "all";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const keyParam = urlParams.get('key');
+            const tierParam = urlParams.get('tier') || 'all';
+
+            if (keyParam) {
+                showKeyResult(keyParam, tierParam);
+                // Giữ URL sạch
+                window.history.replaceState({}, document.title, window.location.pathname + '?key=' + keyParam);
+            }
+        });
+
+        function selectTier(tier) {
+            selectedTier = tier;
+            const tiers = ['all', 'aimlock', 'sensitive', 'regedit'];
+            tiers.forEach(t => {
+                const btn = document.getElementById('tier-btn-' + t);
+                if (t === tier) {
+                    btn.className = "p-2.5 rounded-xl border border-cyan-400 bg-cyan-500/15 text-cyan-400 font-bold flex items-center space-x-2 transition-all";
+                } else {
+                    btn.className = "p-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 font-semibold flex items-center space-x-2 hover:border-white/20 transition-all";
+                }
+            });
+        }
+
+        async function handleGetKey() {
+            const loader = document.getElementById('loading-overlay');
+            loader.classList.remove('hidden');
+
+            try {
+                const res = await fetch(API_BASE + '/api/generate-free-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier: selectedTier, hours: 2 })
+                });
+                const data = await res.json();
+
+                if (data.ok && data.key) {
+                    const currentOrigin = window.location.origin + window.location.pathname;
+                    const destinationUrl = currentOrigin + '?key=' + encodeURIComponent(data.key) + '&tier=' + encodeURIComponent(selectedTier);
+
+                    // Nếu đang test local file:
+                    if (window.location.protocol === 'file:') {
+                        loader.classList.add('hidden');
+                        window.location.href = destinationUrl;
+                        return;
+                    }
+
+                    // Chuyển hướng qua Link4M rút gọn
+                    const link4mUrl = `https://link4m.co/st?api=${LINK4M_TOKEN}&url=${encodeURIComponent(destinationUrl)}`;
+                    window.location.href = link4mUrl;
+                } else {
+                    loader.classList.add('hidden');
+                    alert('Lỗi tạo key: ' + (data.message || data.error || 'Vui lòng thử lại sau!'));
+                }
+            } catch (e) {
+                loader.classList.add('hidden');
+                alert('Không thể kết nối đến server: ' + e.message);
+            }
+        }
+
+        function showKeyResult(key, tier) {
+            document.getElementById('view-get-key').classList.add('hidden');
+            document.getElementById('view-key-result').classList.remove('hidden');
+            document.getElementById('display-key').innerText = key;
+
+            const tierNames = {
+                all: "VIP ALL (Trọn Bộ)",
+                aimlock: "AIMLOCK ONLY (V1-V5)",
+                sensitive: "SENSITIVE ONLY (V1-V5)",
+                regedit: "REGEDIT ONLY (V1-V5)"
+            };
+            document.getElementById('display-tier-label').innerText = tierNames[tier] || "VIP ALL";
+        }
+
+        async function copyKey() {
+            const keyText = document.getElementById('display-key').innerText.trim();
+            try {
+                await navigator.clipboard.writeText(keyText);
+                const btnLabel = document.getElementById('copy-label');
+                btnLabel.innerText = "ĐÃ CHÉP!";
+                setTimeout(() => { btnLabel.innerText = "CHÉP"; }, 2000);
+            } catch (e) {
+                alert('Sao chép: ' + keyText);
+            }
+        }
+
+        function resetGetKeyView() {
+            window.location.href = window.location.pathname;
+        }
+    </script>
+</body>
+</html>

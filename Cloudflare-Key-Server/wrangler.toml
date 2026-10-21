@@ -1,0 +1,8 @@
+name = "dntweaks-key-server"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dntweaks_keys"
+database_id = "dntweaks_keys"
