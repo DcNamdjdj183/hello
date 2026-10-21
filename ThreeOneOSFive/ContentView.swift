@@ -37,6 +37,7 @@ struct ContentView: View {
 
     @State private var showSettings = false
     @State private var showLogs = false
+    @State private var selectedMainSection = "apps"
 
     var body: some View {
         Group {
@@ -74,7 +75,13 @@ struct ContentView: View {
                             KernelStatusCard()
                             PatchStoreSummaryCard()
 
-                            AppManagementSection()
+                            MainSectionSwitcher(selectedSection: $selectedMainSection)
+
+                            if selectedMainSection == "apps" {
+                                AppManagementSection()
+                            } else {
+                                RegeditDashboardSectionView()
+                            }
                         }
                         .padding(.vertical, 16)
                         .padding(.bottom, 36)
@@ -616,7 +623,7 @@ struct AppDetailView: View {
     @State private var passwordPromptItem: PatchLibraryItem?
     @State private var enteredPassword = ""
 
-    private let tabs = ["Patches", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
+    private let tabs = ["Patches", "🎯 Regedit", "DNS AntiBan", "Dọn Dẹp", "Tệp Container"]
 
     private var appPatches: [PatchLibraryItem] {
         patchStore.items.filter { item in
@@ -672,24 +679,27 @@ struct AppDetailView: View {
                 AppHeroHeader(app: app, containerPath: containerPath)
 
                 // Custom Tab Bar
-                HStack(spacing: 0) {
-                    ForEach(tabs, id: \.self) { tab in
-                        Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
-                            VStack(spacing: 8) {
-                                Text(tab)
-                                    .font(.system(size: 13, weight: selectedTab == tab ? .bold : .medium))
-                                    .foregroundColor(selectedTab == tab ? .cyan : .gray)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(tabs, id: \.self) { tab in
+                            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab } }) {
+                                VStack(spacing: 8) {
+                                    Text(tab)
+                                        .font(.system(size: 13, weight: selectedTab == tab ? .bold : .medium))
+                                        .foregroundColor(selectedTab == tab ? .cyan : .gray)
+                                        .lineLimit(1)
 
-                                Rectangle()
-                                    .fill(selectedTab == tab ? Color.cyan : Color.clear)
-                                    .frame(height: 2.5)
-                                    .cornerRadius(1.5)
+                                    Rectangle()
+                                        .fill(selectedTab == tab ? Color.cyan : Color.clear)
+                                        .frame(height: 2.5)
+                                        .cornerRadius(1.5)
+                                }
+                                .padding(.horizontal, 4)
                             }
-                            .frame(maxWidth: .infinity)
                         }
                     }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
                 .padding(.top, 14)
                 .padding(.bottom, 10)
 
@@ -698,6 +708,8 @@ struct AppDetailView: View {
                     VStack(spacing: 16) {
                         if selectedTab == "Patches" {
                             patchTabContent
+                        } else if selectedTab == "🎯 Regedit" {
+                            RegeditGameSectionView(app: app)
                         } else if selectedTab == "DNS AntiBan" {
                             DNSSectionView(title: "CẤU HÌNH DNS ANTIBAN")
                         } else if selectedTab == "Dọn Dẹp" {
@@ -1546,5 +1558,553 @@ func freeDiskSpace() -> String {
         return formatter.string(fromByteCount: freeSpace)
     } catch {
         return "Unknown"
+    }
+}
+
+// MARK: - Main Section Switcher (Apps vs Regedit VIP)
+struct MainSectionSwitcher: View {
+    @Binding var selectedSection: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    selectedSection = "apps"
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.grid.2x2.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("📱 ỨNG DỤNG")
+                        .font(.system(size: 12, weight: .heavy))
+                }
+                .foregroundColor(selectedSection == "apps" ? .black : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    Group {
+                        if selectedSection == "apps" {
+                            LinearGradient(
+                                colors: [Color(red: 0.0, green: 0.85, blue: 0.95), Color(red: 0.0, green: 0.6, blue: 0.95)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            Color.white.opacity(0.04)
+                        }
+                    }
+                )
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(selectedSection == "apps" ? Color.cyan.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    selectedSection = "regedit"
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "scope")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("🎯 REGEDIT VIP")
+                        .font(.system(size: 12, weight: .heavy))
+
+                    Text("V1-V5")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(selectedSection == "regedit" ? .black : .red)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(selectedSection == "regedit" ? Color.black.opacity(0.2) : Color.red.opacity(0.2))
+                        .cornerRadius(5)
+                }
+                .foregroundColor(selectedSection == "regedit" ? .black : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    Group {
+                        if selectedSection == "regedit" {
+                            LinearGradient(
+                                colors: [Color(red: 1.0, green: 0.35, blue: 0.2), Color(red: 1.0, green: 0.65, blue: 0.0)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        } else {
+                            Color.white.opacity(0.04)
+                        }
+                    }
+                )
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(selectedSection == "regedit" ? Color.orange.opacity(0.6) : Color.white.opacity(0.07), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - Regedit Dashboard Section View
+struct RegeditDashboardSectionView: View {
+    @ObservedObject private var regeditManager = RegeditManager.shared
+    @State private var toastMessage: String?
+    @State private var showToast = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header Title
+            HStack {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.red, Color.orange, Color.yellow],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 4, height: 18)
+                        .cornerRadius(2)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("BỘ TINH CHỈNH REGEDIT VIP (V1 - V5)")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundColor(.white)
+                        Text("Aim Lock • Touch Sampling • Hitbox Magnet • Zero Delay")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Spacer()
+
+                // Active counter badge
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(regeditManager.activePresets.isEmpty ? Color.gray : Color.green)
+                        .frame(width: 7, height: 7)
+                    Text("\(regeditManager.activePresets.count)/5 ON")
+                        .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                        .foregroundColor(regeditManager.activePresets.isEmpty ? .gray : .green)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(8)
+            }
+            .padding(.horizontal, 22)
+
+            // Real-Time Hardware Performance HUD
+            RegeditPerformanceHUD()
+                .padding(.horizontal, 20)
+
+            // Master Action Buttons (Full Combo / Reset)
+            HStack(spacing: 12) {
+                Button(action: {
+                    regeditManager.activateAll()
+                    triggerToast("Đã kích hoạt Full Combo Regedit V1 - V5!")
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("BẬT FULL COMBO")
+                            .font(.system(size: 11, weight: .black))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.red.opacity(0.85), Color.orange.opacity(0.85)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                    .shadow(color: Color.red.opacity(0.35), radius: 8, x: 0, y: 3)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    regeditManager.resetAll()
+                    triggerToast("Đã tắt và đặt lại toàn bộ Regedit!")
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("ĐẶT LẠI GỐC")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+
+            // Preset Cards List (V1 -> V5)
+            VStack(spacing: 14) {
+                ForEach(allRegeditPresets) { preset in
+                    RegeditPresetCard(preset: preset, bundleId: nil)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .overlay(
+            VStack {
+                if showToast, let msg = toastMessage {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text(msg)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(red: 0.1, green: 0.12, blue: 0.18))
+                    .cornerRadius(20)
+                    .shadow(color: Color.black.opacity(0.5), radius: 10)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 10)
+                }
+                Spacer()
+            }
+        )
+    }
+
+    private func triggerToast(_ msg: String) {
+        toastMessage = msg
+        withAnimation { showToast = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            withAnimation { showToast = false }
+        }
+    }
+}
+
+// MARK: - Regedit Performance HUD
+struct RegeditPerformanceHUD: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            HUDMetricItem(label: "POLLING", value: "240Hz", color: .cyan)
+            HUDMetricItem(label: "LATENCY", value: "0.001ms", color: .green)
+            HUDMetricItem(label: "DPI CURVE", value: "1200 DPI", color: .orange)
+            HUDMetricItem(label: "ACCEL", value: "Dynamic Y", color: .purple)
+        }
+        .padding(12)
+        .background(Color(red: 0.07, green: 0.09, blue: 0.14))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+    }
+}
+
+struct HUDMetricItem: View {
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(.gray)
+            Text(value)
+                .font(.system(size: 11, weight: .black, design: .monospaced))
+                .foregroundColor(color)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Regedit Preset Card
+struct RegeditPresetCard: View {
+    let preset: RegeditPreset
+    let bundleId: String?
+    @ObservedObject private var regeditManager = RegeditManager.shared
+
+    private var isActive: Bool {
+        regeditManager.isEnabled(presetId: preset.id, for: bundleId)
+    }
+
+    private var currentSens: Double {
+        regeditManager.sensitivity(presetId: preset.id, for: bundleId)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header Row: Icon, Title, Badges, Toggle
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(preset.accentColor.opacity(isActive ? 0.25 : 0.12))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: preset.icon)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(isActive ? preset.accentColor : .gray)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(preset.title)
+                            .font(.system(size: 15, weight: .black))
+                            .foregroundColor(.white)
+
+                        Text("V\(preset.level)")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(preset.accentColor)
+                            .cornerRadius(4)
+
+                        Text(preset.defaultDelay)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(preset.accentColor)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(preset.accentColor.opacity(0.12))
+                            .cornerRadius(4)
+                    }
+
+                    Text(preset.subtitle)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+
+                Spacer()
+
+                // Custom Neon Toggle Switch
+                Button(action: {
+                    _ = regeditManager.toggle(preset: preset, for: bundleId)
+                }) {
+                    ZStack {
+                        Capsule()
+                            .fill(isActive ? preset.accentColor : Color.white.opacity(0.15))
+                            .frame(width: 48, height: 26)
+
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 22, height: 22)
+                            .offset(x: isActive ? 11 : -11)
+                            .shadow(color: Color.black.opacity(0.3), radius: 2)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Description
+            Text(preset.description)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundColor(.white.opacity(0.75))
+                .lineSpacing(2)
+
+            // Tags
+            HStack(spacing: 6) {
+                ForEach(preset.tags, id: \.self) { tag in
+                    Text("#\(tag)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(isActive ? preset.accentColor : .gray)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(isActive ? preset.accentColor.opacity(0.1) : Color.white.opacity(0.04))
+                        .cornerRadius(5)
+                }
+            }
+
+            // Sensitivity Adjustment Slider
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("ĐỘ NHẠY KÉO TÂM (SENSITIVITY)")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.gray)
+
+                    Spacer()
+
+                    Text(String(format: "%.2fx (%.0f%%)", currentSens, currentSens * 100))
+                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .foregroundColor(preset.accentColor)
+                }
+
+                Slider(
+                    value: Binding(
+                        get: { self.currentSens },
+                        set: { val in
+                            regeditManager.setSensitivity(val, presetId: preset.id, for: bundleId)
+                        }
+                    ),
+                    in: 1.0...3.0,
+                    step: 0.05
+                )
+                .accentColor(preset.accentColor)
+
+                HStack {
+                    Text("Trục X: \(String(format: "%.2fx", currentSens * preset.xRatio))")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundColor(.gray)
+
+                    Spacer()
+
+                    Text("Trục Y (Đầu): \(String(format: "%.2fx", currentSens * preset.yRatio))")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(preset.accentColor)
+                }
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.25))
+            .cornerRadius(10)
+        }
+        .padding(16)
+        .background(Color(red: 0.08, green: 0.10, blue: 0.16))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isActive ? preset.accentColor.opacity(0.6) : Color.white.opacity(0.07), lineWidth: isActive ? 1.5 : 1)
+        )
+        .shadow(color: isActive ? preset.accentColor.opacity(0.15) : Color.clear, radius: 10, x: 0, y: 4)
+    }
+}
+
+// MARK: - Regedit Game Section View (Per-Game Tab)
+struct RegeditGameSectionView: View {
+    let app: AppTarget
+    @ObservedObject private var regeditManager = RegeditManager.shared
+    @State private var syncStatusMessage: String?
+    @State private var showSyncAlert = false
+    @State private var syncSuccess = false
+
+    private var containerPath: String? {
+        ContainerStore.resolveAppContainerPath(bundleID: app.bundleId)
+    }
+
+    private var activeCount: Int {
+        allRegeditPresets.filter { regeditManager.isEnabled(presetId: $0.id, for: app.bundleId) }.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Container Status Banner
+            HStack(spacing: 12) {
+                Image(systemName: containerPath != nil ? "checkmark.shield.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(containerPath != nil ? .green : .yellow)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(containerPath != nil ? "CONTAINER ĐÃ KẾT NỐI" : "CHƯA TÌM THẤY CONTAINER")
+                        .font(.system(size: 11, weight: .heavy))
+                        .foregroundColor(containerPath != nil ? .green : .yellow)
+
+                    Text(containerPath != nil ? "Cấu hình tự động ghi vào Documents/DNTWEAKS_Regedit.plist" : "Mở game một lần trên máy để iOS tạo thư mục Sandbox.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+                }
+
+                Spacer()
+            }
+            .padding(12)
+            .background(Color.white.opacity(0.04))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(containerPath != nil ? Color.green.opacity(0.2) : Color.yellow.opacity(0.2), lineWidth: 1)
+            )
+
+            // Header Controls
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CẤU HÌNH CHO \(app.name.uppercased())")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundColor(.white)
+                    Text("\(activeCount)/5 Tinh Chỉnh Đang Kích Hoạt")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.cyan)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    let res = regeditManager.syncContainer(bundleId: app.bundleId)
+                    syncSuccess = res.success
+                    syncStatusMessage = res.message
+                    showSyncAlert = true
+                }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Ghi Container")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.cyan)
+                    .cornerRadius(8)
+                }
+            }
+
+            // Quick action buttons for this game
+            HStack(spacing: 10) {
+                Button(action: {
+                    regeditManager.activateAll(for: app.bundleId)
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bolt.fill")
+                        Text("Bật Tất Cả Cho \(app.name)")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.red.opacity(0.8))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    regeditManager.resetAll(for: app.bundleId)
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.circle")
+                        Text("Tắt Hết")
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: 90)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.06))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // List of presets for this specific game
+            VStack(spacing: 14) {
+                ForEach(allRegeditPresets) { preset in
+                    RegeditPresetCard(preset: preset, bundleId: app.bundleId)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .alert(isPresented: $showSyncAlert) {
+            Alert(
+                title: Text(syncSuccess ? "Thành Công" : "Thông Báo"),
+                message: Text(syncStatusMessage ?? ""),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 }
