@@ -1,59 +1,61 @@
-# DNTWEAKS KEY SERVER & MULTI-TIER ADMIN PANEL
+# DNTWEAKS Key Server & Multi-Tier Admin Panel (Cloudflare Worker + D1)
 
-Server quản lý Key và xác thực bản quyền cho ứng dụng **DNTWEAKS EXTERNAL IOS** trên nền tảng Cloudflare Workers & Cloudflare D1 Database (`dntweaks_keys`).
-
----
-
-## 1. CÁC TÍNH NĂNG NỔI BẬT
-
-1. **Phân Quyền 2 Cấp Độ**:
-   - **Master Admin (Bạn)**: Toàn quyền tạo tài khoản Seller, phân quyền loại key được phép tạo cho từng Seller, xem toàn bộ thống kê và quản lý toàn bộ Key trên hệ thống.
-   - **Seller (Đại Lý)**: Đăng nhập bằng tài khoản Admin cấp, chỉ tạo được các loại Key trong phạm vi được cho phép, chỉ xem và quản lý danh sách Key do chính mình tạo ra.
-
-2. **Tùy Biến Phân Hệ Linh Hoạt & Khóa Làm Mờ Trực Quan**:
-   - Cho phép tích chọn bất kỳ tổ hợp tính năng nào khi tạo Key:
-     - `AIMLOCK VIP (V1 - V5)`
-     - `SENSITIVE VIP (V1 - V5)`
-     - `REGEDIT VIP (V1 - V5)`
-     - Hoặc tạo combo: `Aimlock + Regedit`, `Aimlock + Sensitive`, hoặc `VIP Toàn Bộ (All Access)`.
-   - **Cơ chế khóa & làm mờ trên App iOS**:
-     - Khi người dùng nhập Key vào App, hệ thống sẽ xác thực và chỉ mở đúng các mục được cấp quyền.
-     - Các phân hệ không được cấp quyền sẽ tự động **bị khóa và làm mờ** (`blur(2.5px)` + giảm opacity `0.35` + vô hiệu hóa tương tác) kèm biểu tượng `🔒 CHƯA ĐƯỢC CẤP QUYỀN`.
-     - Thẻ trạng thái Key hiển thị rõ 3 huy hiệu `[✓ AIMLOCK]`, `[✓ SENSITIVE]`, `[✓ REGEDIT]` giúp người dùng nhận diện ngay gói quyền hạn của mình.
-
-3. **Bảo Mật Khóa Thiết Bị (HWID Lock)**:
-   - Tự động gắn thiết bị khi người dùng nhập key lần đầu vào App.
-   - Ngăn chặn chia sẻ key sang máy khác (Báo lỗi `DEVICE_MISMATCH`).
-   - Admin và Seller có nút **Reset ID** chỉ với 1 click nếu khách đổi máy.
+Hệ thống máy chủ phân phối bản quyền, quản lý Key và phân quyền Đại lý (Sellers) cho ứng dụng **DNTWEAKS EXTERNAL IOS**.
 
 ---
 
-## 2. HƯỚNG DẪN CẬP NHẬT LÊN CLOUDFLARE WORKERS (Chỉ mất 1 phút)
+## ⚡ Các Tính Năng Đã Tích Hợp Đầy Đủ
 
-1. Mở trang quản trị Cloudflare Worker của bạn:
-   👉 **`https://dash.cloudflare.com/`** -> Chọn **Workers & Pages** -> Bấm vào Worker **`dntweaks-key-server`**.
-2. Nhìn góc trên bên phải, bấm vào nút **`</> Edit code`** (như trong ảnh bạn đã chụp).
-3. Xóa toàn bộ nội dung cũ trong file `worker.js` (hoặc `index.js`).
-4. Copy toàn bộ nội dung file [`worker.js`](./worker.js) dán vào.
-5. Bấm nút **Deploy** (hoặc **Save and Deploy**).
-6. Truy cập ngay đường dẫn quản trị:
-   👉 **`https://dntweaks-key-server.ddnstore.workers.dev/admin`**
-   - **Tài khoản mặc định**: `admin`
-   - **Mật khẩu mặc định**: `AdminPassword@123`
+1. **Tương thích 100% với hệ thống cũ**:
+   - Sử dụng bảng **`licenses`** từ database D1 gốc.
+   - Tự động bổ sung các cột mới (`tier`, `allowed_modules`, `created_by`) mà không làm mất bất kỳ key cũ nào.
+   - Hỗ trợ toàn bộ các API cũ:
+     - `POST /api/v1/auth/login`: Kích hoạt & đăng nhập thiết bị
+     - `POST /api/v1/auth/check`: Kiểm tra thời hạn, số ngày còn lại (`days_remaining`)
+     - `POST /api/v1/auth/heartbeat`: Cập nhật `last_check_at` định kỳ
+     - `GET  /health`: Kiểm tra trạng thái máy chủ
+2. **API Mới Đồng Bộ Với App iOS ([LicenseManager.swift](file:///c:/Users/admin/Downloads/hello-main/hello-main/ThreeOneOSFive/helpers/LicenseManager.swift))**:
+   - `POST /api/activate`: Nhận `{ key, hwid }`, trả về danh sách phân hệ được phép mở `allowedModules: ["aimlock", "sensitive", "regedit"]`.
+   - `POST /api/verify`: Kiểm tra tính hợp lệ và thời hạn sử dụng.
+3. **Tùy Chọn Phân Hệ Tinh Gọn (Checkbox & Quick Combos)**:
+   - Checkbox độc lập cho từng tính năng:
+     - `[✓] Aimlock VIP (V1 - V5)`
+     - `[✓] Sensitive VIP (V1 - V5)`
+     - `[✓] Regedit VIP (V1 - V5)`
+   - Nút chọn combo siêu nhanh: `VIP ALL`, `Chỉ Aimlock`, `Chỉ Sensitive`, `Chỉ Regedit`, `Aim + Reg`, `Aim + Sens`.
+   - Tự động sinh tiền tố nhận diện: `DNT-ALL-`, `DNT-AIM-`, `DNT-SENS-`, `DNT-REG-`, `DNT-COMBO-`.
+4. **Phân Quyền 2 Cấp (Master Admin & Đại Lý - Sellers)**:
+   - **Master Admin** (Đăng nhập bằng `ADMIN_SECRET`):
+     - Tạo tài khoản cho Seller kèm mật khẩu và hạn mức (quota) số lượng key.
+     - Xem và quản lý toàn bộ keys trong hệ thống.
+     - Ban / Unban / Reset HWID / Xóa key.
+   - **Seller** (Đăng nhập bằng Username & Mật khẩu do Admin cấp):
+     - Tạo key trong phạm vi Quota được cấp.
+     - Chỉ xem và quản lý danh sách key do chính mình tạo ra.
+5. **Giao Diện Cyber Dark Glass tại `/admin`**:
+   - Tông màu Dark Glassmorphism neon công nghệ cao.
+   - Hỗ trợ Copy key 1-click, lọc theo trạng thái, tìm kiếm tức thì.
 
 ---
 
-## 3. DANH SÁCH ENDPOINTS API
+## 🚀 Hướng Dẫn Cập Nhật Lên Cloudflare Worker (1 Bước Duy Nhất)
 
-| Endpoint | Method | Chức Năng |
-|---|---|---|
-| `/health` | `GET` | Kiểm tra tình trạng server |
-| `/admin` | `GET` | Giao diện Web Quản trị Admin & Seller Panel |
-| `/api/auth/login` | `POST` | Đăng nhập tài khoản Admin hoặc Seller |
-| `/api/activate` | `POST` | Kích hoạt bản quyền từ App iOS (Gửi `{ key, hwid }`) |
-| `/api/verify` | `POST` | Xác minh bản quyền định kỳ |
-| `/api/generate-free-key` | `POST` | Tạo key dùng thử cho trang GetKey |
-| `/api/admin/keys` | `GET` | Lấy danh sách keys |
-| `/api/admin/keys/create` | `POST` | Tạo key mới (chọn 4 loại tier) |
-| `/api/admin/sellers` | `GET` | Lấy danh sách Sellers (Admin only) |
-| `/api/admin/sellers/create` | `POST` | Tạo tài khoản Seller mới (Admin only) |
+### Cách 1: Copy-Paste Trực Tiếp Trên Trình Duyệt (Khuyên Dùng)
+1. Đăng nhập [Cloudflare Dashboard](https://dash.cloudflare.com/) -> Vào mục **Workers & Pages**.
+2. Chọn worker: **`dntweaks-key-server`**.
+3. Nhấp nút **`</> Edit code`** ở góc trên bên phải.
+4. Mở file [worker.js](file:///c:/Users/admin/Downloads/hello-main/hello-main/Cloudflare-Key-Server/worker.js), copy toàn bộ nội dung và dán đè vào trình soạn thảo của Cloudflare.
+5. Nhấp **`Deploy`**. Hệ thống sẽ tự động cập nhật ngay lập tức!
+
+### Cách 2: Deploy Bằng Wrangler CLI
+```bash
+cd Cloudflare-Key-Server
+npx wrangler deploy
+```
+
+---
+
+## ⚙️ Biến Môi Trường (Variables / Secrets)
+Trong **Cloudflare Dashboard** -> Worker **`dntweaks-key-server`** -> **Settings** -> **Variables and Secrets**:
+- `ADMIN_SECRET`: Mã bí mật quản trị viên cấp cao (Master Admin). Mặc định nếu không cài đặt sẽ là `DNTWEAKS_SECRET`.
+- D1 Database Binding: Tên binding là **`DB`**, trỏ tới Database `dntweaks_keys`.

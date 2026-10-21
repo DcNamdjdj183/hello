@@ -1,1439 +1,1873 @@
 /**
- * =========================================================================
- * DNTWEAKS EXTERNAL IOS - KEY SERVER & MULTI-TIER ADMIN PANEL
- * Engine: Cloudflare Workers + D1 Database (dntweaks_keys)
- * Version: 2.0.0 Pro VIP
- * 
- * Features:
- * - 2-tier role authentication: Admin (Master) & Seller
- * - 4 Key Tiers: 'all' (VIP All), 'aimlock', 'sensitive', 'regedit'
- * - Auto-binding to HWID device lock with 1-click device reset
- * - Full-featured Admin & Seller web panel at /admin
- * - High-speed JSON API for iOS App & GetKey web portal
- * =========================================================================
+ * ============================================================================
+ * DNTWEAKS EXTERNAL IOS - UNIFIED KEY SERVER & MANAGEMENT PANEL
+ * Engine: Cloudflare Workers + D1 Database (licenses)
+ * Version: 2.5.0 Pro VIP (Dual Compatibility Edition)
+ *
+ * Full Backwards Compatibility:
+ * - Table 'licenses' preserved with all columns: key, product, duration_days,
+ *   max_devices, note, status, device_id, device_name, created_at,
+ *   activated_at, expires_at, last_check_at.
+ * - Auto-migrates and adds 'tier', 'allowed_modules', 'created_by' seamlessly.
+ * - Supports legacy endpoints:
+ *     POST /api/v1/auth/login
+ *     POST /api/v1/auth/check
+ *     POST /api/v1/auth/heartbeat
+ * - Supports new iOS App endpoints:
+ *     POST /api/activate
+ *     POST /api/verify
+ *     GET  /health
+ * - Supports Admin & Seller endpoints:
+ *     POST /api/admin/login
+ *     POST /api/admin/keys/create (Multi-module checkboxes + combos)
+ *     GET  /api/admin/keys
+ *     GET  /api/admin/keys/:key
+ *     POST /api/admin/keys/:key/ban
+ *     POST /api/admin/keys/:key/unban
+ *     POST /api/admin/keys/:key/revoke
+ *     POST /api/admin/keys/:key/reset-device
+ *     DELETE /api/admin/keys/:key
+ *     GET  /api/admin/stats
+ *     GET  /api/admin/sellers
+ *     POST /api/admin/sellers/create
+ *     POST /api/admin/sellers/:id/quota
+ *     DELETE /api/admin/sellers/:id
+ *     GET  /admin (Modern Cyber Dark Glass Panel)
+ * ============================================================================
  */
 
-const DEFAULT_ADMIN_USER = "admin";
-const DEFAULT_ADMIN_PASS = "AdminPassword@123";
-
-// Helper headers CORS
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-HWID, X-Requested-With",
-  "Access-Control-Max-Age": "86400",
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  'Access-Control-Max-Age': '86400'
 };
 
-function jsonResponse(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      ...corsHeaders,
-    },
-  });
-}
-
-function jsonError(message, error = "BAD_REQUEST", status = 400) {
-  return jsonResponse({ ok: false, success: false, error, message }, status);
-}
-
-// Khởi tạo bảng D1 nếu chưa tồn tại
-async function ensureDatabase(db) {
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS keys (
-      key TEXT PRIMARY KEY,
-      tier TEXT NOT NULL DEFAULT 'all',
-      created_by TEXT NOT NULL DEFAULT 'admin',
-      duration_days INTEGER NOT NULL DEFAULT 30,
-      device_id TEXT,
-      max_devices INTEGER DEFAULT 1,
-      status TEXT NOT NULL DEFAULT 'UNUSED',
-      note TEXT,
-      created_at TEXT NOT NULL,
-      activated_at TEXT,
-      expires_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS sellers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      name TEXT,
-      role TEXT NOT NULL DEFAULT 'seller',
-      allowed_tiers TEXT NOT NULL DEFAULT 'all,aimlock,sensitive,regedit',
-      max_keys INTEGER DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'active',
-      created_at TEXT NOT NULL
-    );
-  `);
-
-  // Tạo tài khoản admin mặc định nếu bảng sellers rỗng
-  const adminCheck = await db.prepare("SELECT COUNT(*) as count FROM sellers WHERE role = 'admin'").first();
-  if (!adminCheck || adminCheck.count === 0) {
-    const now = new Date().toISOString();
-    await db.prepare(`
-      INSERT INTO sellers (username, password, name, role, allowed_tiers, max_keys, status, created_at)
-      VALUES (?, ?, ?, 'admin', 'all,aimlock,sensitive,regedit', 0, 'active', ?)
-    `).bind(DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS, "Master Admin", now).run();
-  }
-}
-
-// Parse chuỗi tier thành mảng danh sách các module hợp lệ
-function parseAllowedModules(tier) {
-  if (!tier) return ["aimlock", "sensitive", "regedit"];
-  const t = String(tier).trim().toLowerCase();
-  if (t === "all") return ["aimlock", "sensitive", "regedit"];
-  const parts = t.split(",").map(p => p.trim().toLowerCase()).filter(Boolean);
-  if (parts.includes("all")) return ["aimlock", "sensitive", "regedit"];
-  const valid = ["aimlock", "sensitive", "regedit"];
-  const result = parts.filter(p => valid.includes(p));
-  return result.length > 0 ? result : ["aimlock", "sensitive", "regedit"];
-}
-
-// Sinh chuỗi Key ngẫu nhiên theo tier / danh sách module
-function generateKey(tier) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  function randPart(len = 4) {
-    let res = "";
-    for (let i = 0; i < len; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return res;
-  }
-
-  const modules = parseAllowedModules(tier);
-  let prefix = "VIP";
-  if (modules.length === 3) prefix = "ALL";
-  else if (modules.length === 1) {
-    if (modules[0] === "aimlock") prefix = "AIM";
-    else if (modules[0] === "sensitive") prefix = "SENS";
-    else if (modules[0] === "regedit") prefix = "REG";
-  } else {
-    prefix = "COMBO";
-  }
-
-  return `DNT-${prefix}-${randPart(4)}-${randPart(4)}`;
-}
-
-// Chuyển đổi mã tier sang tên thân thiện
-function getTierDisplayName(tier) {
-  const modules = parseAllowedModules(tier);
-  if (modules.length === 3) {
-    return "ALL ACCESS VIP (TRỌN BỘ)";
-  }
-  if (modules.length === 1) {
-    switch (modules[0]) {
-      case "aimlock": return "AIMLOCK VIP (V1 - V5)";
-      case "sensitive": return "SENSITIVE VIP (V1 - V5)";
-      case "regedit": return "REGEDIT VIP (V1 - V5)";
-    }
-  }
-  const names = modules.map(m => m.toUpperCase()).join(" + ");
-  return `COMBO VIP (${names})`;
-}
-
-// Xác thực Token/Credentials của Admin hoặc Seller
-async function authenticateUser(request, db, env) {
-  const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  const token = authHeader.substring(7).trim();
-  if (!token) return null;
-
-  // Hỗ trợ ADMIN_SECRET trực tiếp từ env
-  if (env.ADMIN_SECRET && token === env.ADMIN_SECRET) {
-    return { username: "admin", role: "admin", name: "Env Master Admin", allowed_tiers: "all,aimlock,sensitive,regedit" };
-  }
-
-  try {
-    // Format token: base64(username:password:timestamp)
-    const decoded = atob(token);
-    const [username, password] = decoded.split(":");
-    if (!username || !password) return null;
-
-    const user = await db.prepare("SELECT * FROM sellers WHERE username = ? AND password = ?").bind(username, password).first();
-    if (user && user.status === "active") {
-      return user;
-    }
-  } catch (e) {
-    // Ignore decode error
+function handleCors(request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
   return null;
 }
 
+function jsonResponse(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...CORS_HEADERS,
+      ...headers
+    }
+  });
+}
+
+function sendError(code, message, status = 400) {
+  return jsonResponse({
+    success: false,
+    valid: false,
+    ok: false,
+    error: code,
+    message
+  }, status);
+}
+
+// ----------------------------------------------------------------------------
+// Database Auto-Initialization & Schema Migration
+// ----------------------------------------------------------------------------
+let dbMigrated = false;
+
+async function ensureDb(db) {
+  if (!db || dbMigrated) return;
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS licenses (
+        key TEXT PRIMARY KEY,
+        product TEXT,
+        tier TEXT DEFAULT 'all',
+        allowed_modules TEXT DEFAULT 'aimlock,sensitive,regedit',
+        duration_days INTEGER NOT NULL DEFAULT 30,
+        max_devices INTEGER DEFAULT 1,
+        note TEXT,
+        status TEXT NOT NULL DEFAULT 'UNUSED',
+        device_id TEXT,
+        device_name TEXT,
+        created_by TEXT NOT NULL DEFAULT 'admin',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        activated_at TEXT,
+        expires_at TEXT,
+        last_check_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS sellers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        name TEXT,
+        role TEXT NOT NULL DEFAULT 'seller',
+        allowed_tiers TEXT NOT NULL DEFAULT 'all,aimlock,sensitive,regedit',
+        max_keys INTEGER DEFAULT 0,
+        used_keys INTEGER DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_licenses_created_by ON licenses(created_by);
+      CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status);
+      CREATE INDEX IF NOT EXISTS idx_licenses_device_id ON licenses(device_id);
+    `);
+
+    // In case licenses table already existed from older deployment, safely add new columns:
+    const migrations = [
+      "ALTER TABLE licenses ADD COLUMN tier TEXT DEFAULT 'all'",
+      "ALTER TABLE licenses ADD COLUMN allowed_modules TEXT DEFAULT 'aimlock,sensitive,regedit'",
+      "ALTER TABLE licenses ADD COLUMN created_by TEXT DEFAULT 'admin'",
+      "ALTER TABLE licenses ADD COLUMN device_name TEXT",
+      "ALTER TABLE licenses ADD COLUMN last_check_at TEXT",
+      "ALTER TABLE licenses ADD COLUMN max_devices INTEGER DEFAULT 1",
+      "ALTER TABLE licenses ADD COLUMN note TEXT"
+    ];
+    for (const sql of migrations) {
+      try { await db.exec(sql); } catch (_) {}
+    }
+
+    dbMigrated = true;
+  } catch (err) {
+    console.error('DB Migration Warning:', err);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Key Generator & Module Resolver
+// ----------------------------------------------------------------------------
+function generateLicenseKey(modules = ['aimlock', 'sensitive', 'regedit'], customPrefix = null) {
+  let prefix = customPrefix;
+  if (!prefix) {
+    const hasAim = modules.includes('aimlock');
+    const hasSens = modules.includes('sensitive');
+    const hasReg = modules.includes('regedit');
+
+    if (hasAim && hasSens && hasReg) {
+      prefix = 'DNT-ALL';
+    } else if (hasAim && !hasSens && !hasReg) {
+      prefix = 'DNT-AIM';
+    } else if (!hasAim && hasSens && !hasReg) {
+      prefix = 'DNT-SENS';
+    } else if (!hasAim && !hasSens && hasReg) {
+      prefix = 'DNT-REG';
+    } else if (hasAim && hasReg && !hasSens) {
+      prefix = 'DNT-AIMREG';
+    } else if (hasAim && hasSens && !hasReg) {
+      prefix = 'DNT-AIMSENS';
+    } else if (hasSens && hasReg && !hasAim) {
+      prefix = 'DNT-SENSREG';
+    } else {
+      prefix = 'DNT-COMBO';
+    }
+  }
+
+  const parts = [prefix];
+  for (let i = 0; i < 3; i++) {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    let part = array[0].toString(36).toUpperCase();
+    while (part.length < 4) {
+      const randArray = new Uint8Array(1);
+      crypto.getRandomValues(randArray);
+      part += randArray[0].toString(36).charAt(0).toUpperCase();
+    }
+    parts.push(part.substring(0, 4));
+  }
+  return parts.join('-');
+}
+
+function parseLicenseModules(license) {
+  let rawMods = [];
+  if (license.allowed_modules && typeof license.allowed_modules === 'string') {
+    rawMods = license.allowed_modules.split(',').map(m => m.trim().toLowerCase()).filter(Boolean);
+  } else if (license.tier && typeof license.tier === 'string') {
+    if (license.tier === 'all') {
+      rawMods = ['aimlock', 'sensitive', 'regedit'];
+    } else {
+      rawMods = license.tier.split(',').map(m => m.trim().toLowerCase()).filter(Boolean);
+    }
+  } else {
+    const prod = (license.product || '').toUpperCase();
+    if (prod.includes('AIM') && !prod.includes('ALL') && !prod.includes('VIP')) {
+      rawMods.push('aimlock');
+    }
+    if (prod.includes('SENS')) {
+      rawMods.push('sensitive');
+    }
+    if (prod.includes('REG')) {
+      rawMods.push('regedit');
+    }
+    if (rawMods.length === 0 || prod.includes('ALL') || prod.includes('VIP-ALL')) {
+      rawMods = ['aimlock', 'sensitive', 'regedit'];
+    }
+  }
+
+  const valid = new Set(['aimlock', 'sensitive', 'regedit']);
+  const filtered = Array.from(new Set(rawMods.filter(m => valid.has(m))));
+  const finalMods = filtered.length > 0 ? filtered : ['aimlock', 'sensitive', 'regedit'];
+
+  let tier = license.tier;
+  if (!tier) {
+    if (finalMods.length === 3) tier = 'all';
+    else tier = finalMods.join(',');
+  }
+
+  let tierName = 'ALL ACCESS VIP (TRỌN BỘ)';
+  if (tier === 'all' || finalMods.length === 3) {
+    tierName = 'ALL ACCESS VIP (TRỌN BỘ)';
+  } else if (finalMods.length === 1) {
+    if (finalMods[0] === 'aimlock') tierName = 'AIMLOCK VIP (V1-V5)';
+    else if (finalMods[0] === 'sensitive') tierName = 'SENSITIVE VIP (V1-V5)';
+    else if (finalMods[0] === 'regedit') tierName = 'REGEDIT VIP (V1-V5)';
+    else tierName = finalMods[0].toUpperCase() + ' VIP';
+  } else {
+    tierName = finalMods.map(m => m.toUpperCase()).join(' + ') + ' VIP';
+  }
+
+  return { tier, tierName, allowedModules: finalMods };
+}
+
+// ----------------------------------------------------------------------------
+// Authentication Helper (Master Admin & Seller Support)
+// ----------------------------------------------------------------------------
+async function authenticateAdminOrSeller(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  let token = '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else {
+    const url = new URL(request.url);
+    token = url.searchParams.get('token') || '';
+  }
+
+  if (!token) {
+    return { ok: false, error: 'UNAUTHORIZED', message: 'Missing Authorization token', status: 401 };
+  }
+
+  const adminSecret = env.ADMIN_SECRET || 'DNTWEAKS_SECRET';
+  if (token === adminSecret) {
+    return { ok: true, role: 'admin', username: 'admin', name: 'Master Admin' };
+  }
+
+  // Check Seller token (Format: SELLER:username:password)
+  if (token.startsWith('SELLER:')) {
+    const parts = token.split(':');
+    if (parts.length >= 3) {
+      const username = parts[1];
+      const password = parts.slice(2).join(':');
+      if (env.DB) {
+        await ensureDb(env.DB);
+        const seller = await env.DB.prepare(
+          'SELECT * FROM sellers WHERE username = ? AND password = ? AND status = ?'
+        ).bind(username, password, 'active').first();
+
+        if (seller) {
+          return {
+            ok: true,
+            role: seller.role || 'seller',
+            username: seller.username,
+            name: seller.name || seller.username,
+            seller
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: false, error: 'UNAUTHORIZED', message: 'Mã xác thực hoặc tài khoản không hợp lệ', status: 401 };
+}
+
+// ----------------------------------------------------------------------------
+// Shared Activation & Verification Logic
+// ----------------------------------------------------------------------------
+async function activateOrLoginKey(db, key, deviceId, deviceName, product = null) {
+  const license = await db.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+  if (!license) {
+    return { success: false, code: 'KEY_NOT_FOUND', message: 'Mã key không tồn tại trên hệ thống' };
+  }
+
+  // Product verification (lenient: allows if exact match, or key has VIP ALL, or product matches module)
+  if (product && license.product && license.product !== product) {
+    const tierInfo = parseLicenseModules(license);
+    const prodUpper = product.toUpperCase();
+    const isMatchingModule = tierInfo.allowedModules.some(m => prodUpper.includes(m.toUpperCase()));
+    if (!isMatchingModule && tierInfo.tier !== 'all' && !prodUpper.includes('ALL')) {
+      return { success: false, code: 'PRODUCT_MISMATCH', message: 'Key không hỗ trợ phân hệ/sản phẩm này' };
+    }
+  }
+
+  if (license.status === 'BANNED') {
+    return { success: false, code: 'KEY_BANNED', message: 'Key đã bị khóa (BANNED) do vi phạm quy định' };
+  }
+  if (license.status === 'REVOKED') {
+    return { success: false, code: 'KEY_REVOKED', message: 'Key đã bị thu hồi (REVOKED)' };
+  }
+  if (license.status === 'EXPIRED') {
+    return { success: false, code: 'KEY_EXPIRED', message: 'Key đã hết thời hạn sử dụng' };
+  }
+
+  if (license.expires_at) {
+    const expTime = new Date(license.expires_at).getTime();
+    if (Date.now() > expTime) {
+      await db.prepare("UPDATE licenses SET status = 'EXPIRED' WHERE key = ?").bind(key).run();
+      return { success: false, code: 'KEY_EXPIRED', message: 'Key đã hết hạn sử dụng' };
+    }
+  }
+
+  const tierInfo = parseLicenseModules(license);
+  const nowIso = new Date().toISOString();
+
+  // If UNUSED -> Activate
+  if (license.status === 'UNUSED') {
+    const durationDays = license.duration_days ?? 30;
+    let expiresAt;
+    if (durationDays === -1) {
+      expiresAt = '2099-12-31T23:59:59.000Z';
+    } else {
+      const exp = new Date();
+      exp.setUTCDate(exp.getUTCDate() + durationDays);
+      expiresAt = exp.toISOString();
+    }
+
+    const updated = await db.prepare(`
+      UPDATE licenses
+      SET status = 'ACTIVE',
+          activated_at = ?,
+          expires_at = ?,
+          device_id = ?,
+          device_name = ?,
+          last_check_at = ?
+      WHERE key = ? AND status = 'UNUSED'
+      RETURNING *
+    `).bind(nowIso, expiresAt, deviceId, deviceName || 'iOS Device', nowIso, key).first();
+
+    return {
+      success: true,
+      valid: true,
+      ok: true,
+      status: 'ACTIVE',
+      message: 'Kích hoạt bản quyền thành công!',
+      license: updated || license,
+      product: license.product,
+      tier: tierInfo.tier,
+      tierName: tierInfo.tierName,
+      allowedModules: tierInfo.allowedModules,
+      expires_at: expiresAt,
+      expiresAt
+    };
+  }
+
+  // If ACTIVE -> Check device_id HWID
+  if (license.device_id && license.device_id !== deviceId) {
+    return {
+      success: false,
+      code: 'DEVICE_MISMATCH',
+      message: 'Key này đã được kích hoạt trên thiết bị khác. Vui lòng liên hệ Admin/Seller để Reset HWID.'
+    };
+  }
+
+  // Update heartbeat
+  await db.prepare('UPDATE licenses SET last_check_at = ? WHERE key = ?').bind(nowIso, key).run();
+
+  return {
+    success: true,
+    valid: true,
+    ok: true,
+    status: 'ACTIVE',
+    message: 'Xác thực bản quyền thành công',
+    license,
+    product: license.product,
+    tier: tierInfo.tier,
+    tierName: tierInfo.tierName,
+    allowedModules: tierInfo.allowedModules,
+    expires_at: license.expires_at,
+    expiresAt: license.expires_at
+  };
+}
+
+// ----------------------------------------------------------------------------
+// Main Request Handler
+// ----------------------------------------------------------------------------
 export default {
   async fetch(request, env, ctx) {
+    const corsRes = handleCors(request);
+    if (corsRes) return corsRes;
+
     const url = new URL(request.url);
-    const pathname = url.pathname;
-    const method = request.method;
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    const method = request.method.toUpperCase();
 
-    // 1. Handle CORS Preflight
-    if (method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+    // Ensure database schema is ready
+    if (env.DB) {
+      await ensureDb(env.DB);
     }
 
-    // 2. Kiểm tra D1 Binding
-    if (!env.DB) {
-      return jsonError("Cloudflare D1 Database binding 'DB' is missing! Please bind 'DB' to 'dntweaks_keys'.", "DB_NOT_BOUND", 500);
-    }
-
-    // Đảm bảo cấu trúc bảng tồn tại
-    try {
-      await ensureDatabase(env.DB);
-    } catch (e) {
-      return jsonError("Database initialization error: " + e.message, "DB_INIT_ERROR", 500);
-    }
-
-    // =========================================================================
-    // ROUTE: HEALTH CHECK
-    // =========================================================================
-    if (pathname === "/health" || pathname === "/api/health") {
+    // 1. Health Check
+    if (path === '/health' && method === 'GET') {
       return jsonResponse({
-        status: "ok",
-        service: "DNTWEAKS KEY SERVER",
-        version: "2.0.0",
-        tiers: ["all", "aimlock", "sensitive", "regedit"],
-        time: new Date().toISOString()
+        status: 'ok',
+        service: 'DNTWEAKS KEY SERVER',
+        version: '2.5.0 Pro VIP',
+        compatibility: 'Unified Dual-API'
       });
     }
 
-    // =========================================================================
-    // ROUTE: CLIENT APP - KÍCH HOẠT KEY (/api/activate & /api/verify)
-    // =========================================================================
-    if (pathname === "/api/activate" || pathname === "/api/verify") {
-      if (method !== "POST") return jsonError("Method not allowed", "METHOD_NOT_ALLOWED", 405);
+    // 2. Admin Panel Web UI
+    if (path === '/admin' && method === 'GET') {
+      return new Response(renderAdminHtml(), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
 
-      let body;
+    // 3. New iOS App Activation Endpoint: POST /api/activate
+    if (path === '/api/activate' && method === 'POST') {
       try {
-        body = await request.json();
-      } catch (e) {
-        return jsonError("Invalid JSON body", "INVALID_JSON");
-      }
+        const body = await request.json().catch(() => ({}));
+        const key = (body.key || '').trim().toUpperCase();
+        const hwid = (body.hwid || body.device_id || '').trim();
+        const deviceName = (body.device_name || 'iOS Device').trim();
 
-      const keyRaw = (body.key || "").trim().toUpperCase();
-      const hwid = (body.hwid || body.device_id || request.headers.get("X-HWID") || "").trim();
+        if (!key || !hwid) {
+          return sendError('INVALID_REQUEST', 'Vui lòng cung cấp mã Key và Device HWID');
+        }
 
-      if (!keyRaw) {
-        return jsonError("Vui lòng nhập License Key!", "MISSING_KEY");
-      }
+        const result = await activateOrLoginKey(env.DB, key, hwid, deviceName);
+        if (!result.success) {
+          return sendError(result.code, result.message, 400);
+        }
 
-      // Master Backdoor / Developer Override Key
-      if (keyRaw === "OGIOS" || keyRaw === "DNTWEAKS" || keyRaw === "VIP3105" || keyRaw === "EXTERNAL-PRO") {
-        const fakeExpiry = new Date(Date.now() + 3650 * 86400 * 1000).toISOString();
         return jsonResponse({
           ok: true,
           success: true,
-          key: keyRaw,
-          tier: "all",
-          tierName: getTierDisplayName("all"),
-          allowedModules: ["aimlock", "sensitive", "regedit"],
-          durationDays: -1,
-          expiresAt: fakeExpiry,
-          deviceId: hwid || "DEV-OVERRIDE",
-          message: "Kích hoạt quyền Master Developer VIP thành công!"
+          valid: true,
+          status: result.status,
+          tier: result.tier,
+          tierName: result.tierName,
+          allowedModules: result.allowedModules,
+          expiresAt: result.expiresAt,
+          expires_at: result.expires_at,
+          message: result.message
         });
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message || 'Lỗi xử lý kích hoạt', 500);
       }
+    }
 
-      const keyRecord = await env.DB.prepare("SELECT * FROM keys WHERE key = ?").bind(keyRaw).first();
-      if (!keyRecord) {
-        return jsonError("Mã Key không tồn tại trên hệ thống!", "KEY_NOT_FOUND", 404);
-      }
+    // 4. New iOS App Verification Endpoint: POST /api/verify
+    if (path === '/api/verify' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const key = (body.key || '').trim().toUpperCase();
+        const hwid = (body.hwid || body.device_id || '').trim();
 
-      if (keyRecord.status === "BANNED") {
-        return jsonError("Key này đã bị vô hiệu hóa (Banned) do vi phạm chính sách!", "KEY_BANNED", 403);
-      }
-
-      const now = new Date();
-      const allowedModules = parseAllowedModules(keyRecord.tier);
-      const tierDisplayName = getTierDisplayName(keyRecord.tier);
-
-      // Nếu key chưa kích hoạt lần nào (UNUSED)
-      if (keyRecord.status === "UNUSED") {
-        let expiresAt = null;
-        if (keyRecord.duration_days > 0) {
-          const expTime = new Date(now.getTime() + keyRecord.duration_days * 86400 * 1000);
-          expiresAt = expTime.toISOString();
-        } else {
-          // Lifetime (-1) -> 10 năm sau
-          expiresAt = new Date(now.getTime() + 3650 * 86400 * 1000).toISOString();
+        if (!key || !hwid) {
+          return sendError('INVALID_REQUEST', 'Vui lòng cung cấp mã Key và Device HWID');
         }
 
-        const devId = hwid || "DEVICE-DEFAULT";
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) {
+          return sendError('KEY_NOT_FOUND', 'Mã key không tồn tại');
+        }
+
+        if (license.status === 'BANNED') return sendError('KEY_BANNED', 'Key đã bị khóa');
+        if (license.status === 'REVOKED') return sendError('KEY_REVOKED', 'Key đã bị thu hồi');
+        if (license.status === 'EXPIRED') return sendError('KEY_EXPIRED', 'Key đã hết hạn');
+
+        if (license.expires_at && Date.now() > new Date(license.expires_at).getTime()) {
+          await env.DB.prepare("UPDATE licenses SET status = 'EXPIRED' WHERE key = ?").bind(key).run();
+          return sendError('KEY_EXPIRED', 'Key đã hết hạn');
+        }
+
+        if (license.device_id && license.device_id !== hwid) {
+          return sendError('DEVICE_MISMATCH', 'Thiết bị không trùng khớp với mã key');
+        }
+
+        const tierInfo = parseLicenseModules(license);
+        let daysRemaining = 0;
+        if (license.expires_at) {
+          const msRemaining = new Date(license.expires_at).getTime() - Date.now();
+          daysRemaining = Math.max(0, Math.floor(msRemaining / (1000 * 60 * 60 * 24)));
+        }
+
+        return jsonResponse({
+          ok: true,
+          success: true,
+          valid: true,
+          status: license.status,
+          tier: tierInfo.tier,
+          tierName: tierInfo.tierName,
+          allowedModules: tierInfo.allowedModules,
+          expiresAt: license.expires_at,
+          expires_at: license.expires_at,
+          days_remaining: daysRemaining,
+          daysRemaining,
+          message: 'Key hợp lệ'
+        });
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message, 500);
+      }
+    }
+
+    // 5. Legacy Auth Endpoints (/api/v1/auth/*)
+    if (path === '/api/v1/auth/login' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const key = (body.key || '').trim().toUpperCase();
+        const deviceId = (body.device_id || body.hwid || '').trim();
+        const deviceName = (body.device_name || 'Unknown').trim();
+        const product = body.product || null;
+
+        if (!key || !deviceId) {
+          return sendError('INVALID_REQUEST', 'Missing key or device_id');
+        }
+
+        const result = await activateOrLoginKey(env.DB, key, deviceId, deviceName, product);
+        if (!result.success) {
+          return sendError(result.code, result.message, 400);
+        }
+
+        return jsonResponse({
+          success: true,
+          valid: true,
+          ok: true,
+          status: result.status,
+          message: result.message,
+          product: result.product,
+          tier: result.tier,
+          tierName: result.tierName,
+          allowedModules: result.allowedModules,
+          expires_at: result.expires_at,
+          expiresAt: result.expiresAt
+        });
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message || 'Internal error', 500);
+      }
+    }
+
+    if (path === '/api/v1/auth/check' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const key = (body.key || '').trim().toUpperCase();
+        const deviceId = (body.device_id || body.hwid || '').trim();
+        const product = body.product || null;
+
+        if (!key || !deviceId) {
+          return sendError('INVALID_REQUEST', 'Missing fields');
+        }
+
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) return sendError('KEY_NOT_FOUND', 'Key does not exist', 404);
+
+        if (license.status === 'BANNED') return sendError('KEY_BANNED', 'Key has been banned');
+        if (license.status === 'REVOKED') return sendError('KEY_REVOKED', 'Key has been revoked');
+        if (license.status === 'EXPIRED') return sendError('KEY_EXPIRED', 'Key has expired');
+
+        if (license.expires_at && Date.now() > new Date(license.expires_at).getTime()) {
+          await env.DB.prepare("UPDATE licenses SET status = 'EXPIRED' WHERE key = ?").bind(key).run();
+          return sendError('KEY_EXPIRED', 'Key has expired');
+        }
+
+        if (license.status === 'UNUSED') {
+          return sendError('UNAUTHORIZED', 'Key not activated yet');
+        }
+
+        if (license.device_id !== deviceId) {
+          return sendError('DEVICE_MISMATCH', 'Device mismatch');
+        }
+
+        let daysRemaining = 0;
+        if (license.expires_at) {
+          const msRemaining = new Date(license.expires_at).getTime() - Date.now();
+          daysRemaining = Math.max(0, Math.floor(msRemaining / (1000 * 60 * 60 * 24)));
+        }
+
+        const tierInfo = parseLicenseModules(license);
+        return jsonResponse({
+          success: true,
+          valid: true,
+          ok: true,
+          status: license.status,
+          product: license.product,
+          tier: tierInfo.tier,
+          tierName: tierInfo.tierName,
+          allowedModules: tierInfo.allowedModules,
+          expires_at: license.expires_at,
+          expiresAt: license.expires_at,
+          days_remaining: daysRemaining
+        });
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message, 500);
+      }
+    }
+
+    if (path === '/api/v1/auth/heartbeat' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const key = (body.key || '').trim().toUpperCase();
+        const deviceId = (body.device_id || body.hwid || '').trim();
+
+        if (!key || !deviceId) return sendError('INVALID_REQUEST', 'Missing fields');
+
+        const now = new Date().toISOString();
         await env.DB.prepare(`
-          UPDATE keys 
-          SET status = 'ACTIVE', device_id = ?, activated_at = ?, expires_at = ?
-          WHERE key = ?
-        `).bind(devId, now.toISOString(), expiresAt, keyRaw).run();
+          UPDATE licenses
+          SET last_check_at = ?
+          WHERE key = ? AND device_id = ?
+        `).bind(now, key, deviceId).run();
 
-        return jsonResponse({
-          ok: true,
-          success: true,
-          key: keyRaw,
-          tier: keyRecord.tier,
-          tierName: tierDisplayName,
-          allowedModules: allowedModules,
-          durationDays: keyRecord.duration_days,
-          expiresAt: expiresAt,
-          deviceId: devId,
-          message: `Kích hoạt thành công gói ${tierDisplayName}!`
-        });
+        return jsonResponse({ success: true, ok: true });
+      } catch (err) {
+        return sendError('SERVER_ERROR', 'Heartbeat failed', 500);
       }
+    }
 
-      // Nếu key đã được kích hoạt trước đó (ACTIVE)
-      if (keyRecord.status === "ACTIVE") {
-        // 1. Kiểm tra khóa thiết bị HWID
-        if (keyRecord.device_id && hwid && keyRecord.device_id !== hwid) {
-          return jsonError(
-            `Key đã được liên kết với thiết bị khác (ID: ...${keyRecord.device_id.slice(-6)}). Vui lòng liên hệ Admin/Seller để reset thiết bị!`,
-            "DEVICE_MISMATCH",
-            403
-          );
+    // 6. Admin / Seller Login Endpoint
+    if (path === '/api/admin/login' && method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const secret = (body.secret || '').trim();
+        const username = (body.username || '').trim();
+        const password = (body.password || '').trim();
+
+        const adminSecret = env.ADMIN_SECRET || 'DNTWEAKS_SECRET';
+
+        // Admin Secret direct login
+        if (secret && secret === adminSecret) {
+          return jsonResponse({
+            success: true,
+            role: 'admin',
+            username: 'admin',
+            name: 'Master Admin',
+            token: secret
+          });
         }
 
-        // 2. Kiểm tra hạn sử dụng
-        if (keyRecord.expires_at) {
-          const expDate = new Date(keyRecord.expires_at);
-          if (now > expDate) {
-            await env.DB.prepare("UPDATE keys SET status = 'EXPIRED' WHERE key = ?").bind(keyRaw).run();
-            return jsonError("Key của bạn đã hết hạn sử dụng! Vui lòng gia hạn thêm.", "KEY_EXPIRED", 403);
+        // Seller login
+        if (username && password) {
+          const seller = await env.DB.prepare(
+            'SELECT * FROM sellers WHERE username = ? AND password = ? AND status = ?'
+          ).bind(username, password, 'active').first();
+
+          if (seller) {
+            const token = `SELLER:${seller.username}:${seller.password}`;
+            return jsonResponse({
+              success: true,
+              role: seller.role || 'seller',
+              username: seller.username,
+              name: seller.name || seller.username,
+              max_keys: seller.max_keys,
+              used_keys: seller.used_keys,
+              quota_remaining: seller.max_keys === 0 ? 'Vô hạn' : Math.max(0, seller.max_keys - seller.used_keys),
+              token
+            });
           }
         }
 
-        return jsonResponse({
-          ok: true,
-          success: true,
-          key: keyRaw,
-          tier: keyRecord.tier,
-          tierName: tierDisplayName,
-          allowedModules: allowedModules,
-          durationDays: keyRecord.duration_days,
-          expiresAt: keyRecord.expires_at,
-          deviceId: keyRecord.device_id || hwid,
-          message: "Xác minh bản quyền hợp lệ!"
+        return sendError('UNAUTHORIZED', 'Mã bí mật hoặc tài khoản/mật khẩu không đúng', 401);
+      } catch (err) {
+        return sendError('SERVER_ERROR', err.message, 500);
+      }
+    }
+
+    // 7. Protected Admin & Seller APIs
+    if (path.startsWith('/api/admin/')) {
+      const auth = await authenticateAdminOrSeller(request, env);
+      if (!auth.ok) {
+        return sendError(auth.error, auth.message, auth.status);
+      }
+
+      // GET /api/admin/stats
+      if (path === '/api/admin/stats' && method === 'GET') {
+        let countQuery = 'SELECT status, COUNT(*) as count FROM licenses';
+        const params = [];
+        if (auth.role === 'seller') {
+          countQuery += ' WHERE created_by = ?';
+          params.push(auth.username);
+        }
+        countQuery += ' GROUP BY status';
+
+        const { results } = await env.DB.prepare(countQuery).bind(...params).all();
+        const stats = {
+          total_keys: 0,
+          active_keys: 0,
+          unused_keys: 0,
+          expired_keys: 0,
+          banned_keys: 0,
+          revoked_keys: 0,
+          total_sellers: 0
+        };
+
+        (results || []).forEach(row => {
+          stats.total_keys += row.count;
+          const k = row.status.toLowerCase() + '_keys';
+          if (stats[k] !== undefined) stats[k] = row.count;
         });
-      }
 
-      if (keyRecord.status === "EXPIRED") {
-        return jsonError("Key của bạn đã hết hạn sử dụng!", "KEY_EXPIRED", 403);
-      }
-
-      return jsonError("Trạng thái key không hợp lệ: " + keyRecord.status, "INVALID_STATUS", 400);
-    }
-
-    // =========================================================================
-    // ROUTE: TẠO KEY MIỄN PHÍ DÀNH CHO TRANG GETKEY (/api/generate-free-key)
-    // =========================================================================
-    if (pathname === "/api/generate-free-key") {
-      if (method !== "POST") return jsonError("Method not allowed", "METHOD_NOT_ALLOWED", 405);
-
-      let body = {};
-      try { body = await request.json(); } catch (e) {}
-
-      // Mặc định key thử nghiệm 2 giờ hoặc 24 giờ, loại tier tuỳ chọn (mặc định 'all' hoặc 'aimlock')
-      const tier = body.tier || "all";
-      const durationHours = parseInt(body.hours) || 2;
-      const durationDays = durationHours / 24.0;
-      const newKey = generateKey(tier);
-      const now = new Date().toISOString();
-
-      await env.DB.prepare(`
-        INSERT INTO keys (key, tier, created_by, duration_days, status, note, created_at)
-        VALUES (?, ?, 'getkey_portal', ?, 'UNUSED', ?, ?)
-      `).bind(newKey, tier, durationDays, `Free Key GetKey Portal (${durationHours}h)`, now).run();
-
-      return jsonResponse({
-        ok: true,
-        success: true,
-        key: newKey,
-        tier: tier,
-        tierName: getTierDisplayName(tier),
-        durationHours: durationHours,
-        message: "Tạo key dùng thử thành công!"
-      });
-    }
-
-    // =========================================================================
-    // ROUTE: ĐĂNG NHẬP ADMIN & SELLER (/api/auth/login)
-    // =========================================================================
-    if (pathname === "/api/auth/login") {
-      if (method !== "POST") return jsonError("Method not allowed", "METHOD_NOT_ALLOWED", 405);
-
-      let body;
-      try { body = await request.json(); } catch (e) { return jsonError("Invalid JSON"); }
-
-      const username = (body.username || "").trim();
-      const password = (body.password || "").trim();
-
-      if (!username || !password) {
-        return jsonError("Vui lòng nhập tên đăng nhập và mật khẩu!");
-      }
-
-      // Check database
-      const user = await env.DB.prepare("SELECT * FROM sellers WHERE username = ? AND password = ?").bind(username, password).first();
-      if (!user) {
-        return jsonError("Tài khoản hoặc mật khẩu không chính xác!", "AUTH_FAILED", 401);
-      }
-
-      if (user.status !== "active") {
-        return jsonError("Tài khoản của bạn đã bị khóa! Liên hệ Admin chính.", "ACCOUNT_BLOCKED", 403);
-      }
-
-      const token = btoa(`${user.username}:${user.password}:${Date.now()}`);
-      return jsonResponse({
-        ok: true,
-        success: true,
-        token: token,
-        user: {
-          username: user.username,
-          name: user.name || user.username,
-          role: user.role,
-          allowedTiers: user.allowed_tiers.split(","),
-          maxKeys: user.max_keys
-        }
-      });
-    }
-
-    // =========================================================================
-    // ROUTES: ADMIN & SELLER MANAGEMENT (Yêu cầu Authentication)
-    // =========================================================================
-    if (pathname.startsWith("/api/admin")) {
-      const authUser = await authenticateUser(request, env.DB, env);
-      if (!authUser) {
-        return jsonError("Phiên làm việc hết hạn hoặc Authorization không hợp lệ!", "UNAUTHORIZED", 401);
-      }
-
-      const isAdmin = authUser.role === "admin";
-
-      // -----------------------------------------------------------------------
-      // 1. Thống kê Dashboard (/api/admin/stats)
-      // -----------------------------------------------------------------------
-      if (pathname === "/api/admin/stats" && method === "GET") {
-        let keyStats;
-        if (isAdmin) {
-          keyStats = await env.DB.prepare(`
-            SELECT 
-              COUNT(*) as total,
-              SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) as active,
-              SUM(CASE WHEN status = 'UNUSED' THEN 1 ELSE 0 END) as unused,
-              SUM(CASE WHEN status = 'BANNED' THEN 1 ELSE 0 END) as banned,
-              SUM(CASE WHEN status = 'EXPIRED' THEN 1 ELSE 0 END) as expired
-            FROM keys
-          `).first();
-        } else {
-          keyStats = await env.DB.prepare(`
-            SELECT 
-              COUNT(*) as total,
-              SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) as active,
-              SUM(CASE WHEN status = 'UNUSED' THEN 1 ELSE 0 END) as unused,
-              SUM(CASE WHEN status = 'BANNED' THEN 1 ELSE 0 END) as banned,
-              SUM(CASE WHEN status = 'EXPIRED' THEN 1 ELSE 0 END) as expired
-            FROM keys WHERE created_by = ?
-          `).bind(authUser.username).first();
+        if (auth.role === 'admin') {
+          const sellersRow = await env.DB.prepare('SELECT COUNT(*) as count FROM sellers').first();
+          stats.total_sellers = sellersRow?.count || 0;
         }
 
-        const sellerCount = isAdmin ? (await env.DB.prepare("SELECT COUNT(*) as count FROM sellers WHERE role = 'seller'").first())?.count || 0 : 0;
+        return jsonResponse({ success: true, stats, role: auth.role, username: auth.username });
+      }
 
-        return jsonResponse({
-          ok: true,
-          success: true,
-          stats: {
-            totalKeys: keyStats?.total || 0,
-            activeKeys: keyStats?.active || 0,
-            unusedKeys: keyStats?.unused || 0,
-            bannedKeys: keyStats?.banned || 0,
-            expiredKeys: keyStats?.expired || 0,
-            totalSellers: sellerCount
+      // POST /api/admin/keys/create
+      if (path === '/api/admin/keys/create' && method === 'POST') {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const durationDays = parseInt(body.duration_days ?? 30);
+          const maxDevices = parseInt(body.max_devices ?? 1);
+          const note = body.note || null;
+          const customPrefix = body.prefix || null;
+
+          // Check Seller Quota
+          if (auth.role === 'seller' && auth.seller) {
+            if (auth.seller.max_keys > 0 && auth.seller.used_keys >= auth.seller.max_keys) {
+              return sendError('QUOTA_EXCEEDED', 'Bạn đã tạo hết hạn mức (quota) key được cấp. Liên hệ Master Admin.', 403);
+            }
           }
-        });
+
+          // Module & Tier Selection
+          let selectedMods = [];
+          if (Array.isArray(body.modules) && body.modules.length > 0) {
+            selectedMods = body.modules.map(m => m.trim().toLowerCase());
+          } else if (typeof body.modules === 'string' && body.modules.trim()) {
+            selectedMods = body.modules.split(',').map(m => m.trim().toLowerCase());
+          } else if (body.tier) {
+            if (body.tier === 'all') selectedMods = ['aimlock', 'sensitive', 'regedit'];
+            else selectedMods = body.tier.split(',').map(m => m.trim().toLowerCase());
+          } else {
+            selectedMods = ['aimlock', 'sensitive', 'regedit'];
+          }
+
+          const validMods = new Set(['aimlock', 'sensitive', 'regedit']);
+          const finalMods = Array.from(new Set(selectedMods.filter(m => validMods.has(m))));
+          if (finalMods.length === 0) finalMods.push('aimlock', 'sensitive', 'regedit');
+
+          let tier = finalMods.length === 3 ? 'all' : finalMods.join(',');
+          let product = body.product;
+          if (!product) {
+            if (tier === 'all') product = 'DNTWEAKS-VIP-ALL';
+            else if (tier === 'aimlock') product = 'DNTWEAKS-AIMLOCK';
+            else if (tier === 'sensitive') product = 'DNTWEAKS-SENSITIVE';
+            else if (tier === 'regedit') product = 'DNTWEAKS-REGEDIT';
+            else product = 'DNTWEAKS-COMBO';
+          }
+
+          const key = generateLicenseKey(finalMods, customPrefix);
+          const allowedModulesStr = finalMods.join(',');
+          const createdBy = auth.username;
+
+          await env.DB.prepare(`
+            INSERT INTO licenses (
+              key, product, tier, allowed_modules, duration_days, max_devices, note, status, created_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'UNUSED', ?, CURRENT_TIMESTAMP)
+          `).bind(key, product, tier, allowedModulesStr, durationDays, maxDevices, note, createdBy).run();
+
+          // If Seller, increment used_keys
+          if (auth.role === 'seller') {
+            await env.DB.prepare('UPDATE sellers SET used_keys = used_keys + 1 WHERE username = ?').bind(auth.username).run();
+          }
+
+          const tierInfo = parseLicenseModules({ tier, allowed_modules: allowedModulesStr, product });
+
+          return jsonResponse({
+            success: true,
+            key,
+            product,
+            tier: tierInfo.tier,
+            tierName: tierInfo.tierName,
+            allowed_modules: finalMods,
+            duration_days: durationDays,
+            max_devices: maxDevices,
+            status: 'UNUSED',
+            expires_at: null,
+            created_by: createdBy
+          });
+        } catch (err) {
+          return sendError('SERVER_ERROR', err.message || 'Lỗi tạo key', 500);
+        }
       }
 
-      // -----------------------------------------------------------------------
-      // 2. Lấy danh sách Keys (/api/admin/keys)
-      // -----------------------------------------------------------------------
-      if (pathname === "/api/admin/keys" && method === "GET") {
-        const search = url.searchParams.get("search") || "";
-        const tier = url.searchParams.get("tier") || "";
-        const status = url.searchParams.get("status") || "";
-        const sellerFilter = url.searchParams.get("seller") || "";
+      // GET /api/admin/keys
+      if (path === '/api/admin/keys' && method === 'GET') {
+        const search = url.searchParams.get('search') || '';
+        const status = url.searchParams.get('status') || '';
+        const product = url.searchParams.get('product') || '';
+        const tier = url.searchParams.get('tier') || '';
+        const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+        const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get('limit') || '50')));
+        const offset = (page - 1) * limit;
 
-        let sql = "SELECT * FROM keys WHERE 1=1";
+        let query = 'SELECT * FROM licenses WHERE 1=1';
         const params = [];
 
-        // Nếu là Seller thường, chỉ lấy key do seller đó tạo
-        if (!isAdmin) {
-          sql += " AND created_by = ?";
-          params.push(authUser.username);
-        } else if (sellerFilter) {
-          sql += " AND created_by = ?";
-          params.push(sellerFilter);
+        if (auth.role === 'seller') {
+          query += ' AND created_by = ?';
+          params.push(auth.username);
         }
 
         if (search) {
-          sql += " AND (key LIKE ? OR note LIKE ? OR device_id LIKE ?)";
-          const s = `%${search}%`;
-          params.push(s, s, s);
-        }
-
-        if (tier) {
-          sql += " AND tier = ?";
-          params.push(tier);
+          query += ' AND (key LIKE ? OR device_id LIKE ? OR note LIKE ?)';
+          params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         if (status) {
-          sql += " AND status = ?";
+          query += ' AND status = ?';
           params.push(status);
         }
 
-        sql += " ORDER BY created_at DESC LIMIT 500";
-
-        const { results } = await env.DB.prepare(sql).bind(...params).all();
-        return jsonResponse({ ok: true, success: true, keys: results });
-      }
-
-      // -----------------------------------------------------------------------
-      // 3. Tạo Key Mới (/api/admin/keys/create)
-      // -----------------------------------------------------------------------
-      if (pathname === "/api/admin/keys/create" && method === "POST") {
-        let body;
-        try { body = await request.json(); } catch (e) { return jsonError("Invalid JSON"); }
-
-        let tier = "all";
-        if (Array.isArray(body.modules) && body.modules.length > 0) {
-          const cleanMods = body.modules.map(m => String(m).trim().toLowerCase()).filter(m => ["aimlock", "sensitive", "regedit"].includes(m));
-          if (cleanMods.length === 3) {
-            tier = "all";
-          } else if (cleanMods.length > 0) {
-            tier = cleanMods.join(",");
-          }
-        } else if (body.tier) {
-          tier = String(body.tier).trim().toLowerCase();
+        if (product) {
+          query += ' AND product = ?';
+          params.push(product);
         }
 
-        const duration_days = parseInt(body.duration_days) ?? 30;
-        const max_devices = parseInt(body.max_devices) || 1;
-        const note = (body.note || "").trim();
-        const quantity = Math.min(Math.max(parseInt(body.quantity) || 1, 1), 100);
-
-        // Kiểm tra quyền tạo tier đối với Seller
-        if (!isAdmin) {
-          const allowed = (authUser.allowed_tiers || "").split(",").map(t => t.trim().toLowerCase());
-          const requestedMods = parseAllowedModules(tier);
-          if (!allowed.includes("all")) {
-            for (const mod of requestedMods) {
-              if (!allowed.includes(mod)) {
-                return jsonError(`Bạn không có quyền tạo phân hệ: ${mod.toUpperCase()}! Hãy liên hệ Admin.`);
-              }
-            }
-          }
-
-          // Kiểm tra hạn mức tạo key của seller
-          if (authUser.max_keys > 0) {
-            const count = (await env.DB.prepare("SELECT COUNT(*) as c FROM keys WHERE created_by = ?").bind(authUser.username).first())?.c || 0;
-            if (count + quantity > authUser.max_keys) {
-              return jsonError(`Bạn đã vượt quá giới hạn tối đa ${authUser.max_keys} key được phép tạo!`);
-            }
-          }
+        if (tier) {
+          query += ' AND (tier = ? OR allowed_modules LIKE ?)';
+          params.push(tier, `%${tier}%`);
         }
 
-        const createdKeys = [];
-        const now = new Date().toISOString();
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
 
-        for (let i = 0; i < quantity; i++) {
-          const keyStr = generateKey(tier);
-          await env.DB.prepare(`
-            INSERT INTO keys (key, tier, created_by, duration_days, max_devices, status, note, created_at)
-            VALUES (?, ?, ?, ?, ?, 'UNUSED', ?, ?)
-          `).bind(keyStr, tier, authUser.username, duration_days, max_devices, note, now).run();
+        const { results } = await env.DB.prepare(query).bind(...params).all();
 
-          createdKeys.push(keyStr);
-        }
-
-        return jsonResponse({
-          ok: true,
-          success: true,
-          key: createdKeys[0],
-          keys: createdKeys,
-          count: createdKeys.length,
-          tier,
-          tierName: getTierDisplayName(tier),
-          message: `Đã tạo thành công ${createdKeys.length} key (${getTierDisplayName(tier)})!`
+        // Enrich results with parsed modules
+        const keys = (results || []).map(k => {
+          const parsed = parseLicenseModules(k);
+          return {
+            ...k,
+            tier: parsed.tier,
+            tierName: parsed.tierName,
+            allowed_modules_list: parsed.allowedModules
+          };
         });
+
+        return jsonResponse({ success: true, keys, page, limit });
       }
 
-      // -----------------------------------------------------------------------
-      // 4. Các thao tác trên 1 Key: Ban / Unban / Reset Device / Delete
-      // -----------------------------------------------------------------------
-      const keyActionMatch = pathname.match(/^\/api\/admin\/keys\/([^\/]+)(?:\/(ban|unban|reset-device))?$/);
-      if (keyActionMatch) {
-        const targetKey = decodeURIComponent(keyActionMatch[1]);
-        const subAction = keyActionMatch[2];
-
-        // Lấy thông tin key để kiểm tra quyền
-        const keyItem = await env.DB.prepare("SELECT * FROM keys WHERE key = ?").bind(targetKey).first();
-        if (!keyItem) return jsonError("Key không tồn tại!", "NOT_FOUND", 404);
-
-        if (!isAdmin && keyItem.created_by !== authUser.username) {
-          return jsonError("Bạn không có quyền thao tác trên key của người khác!", "FORBIDDEN", 403);
+      // Single Key Operations: /api/admin/keys/:key/*
+      const keyDetailMatch = path.match(/^\/api\/admin\/keys\/([^\/]+)$/);
+      if (keyDetailMatch) {
+        const key = decodeURIComponent(keyDetailMatch[1]);
+        if (method === 'GET') {
+          const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+          if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+          if (auth.role === 'seller' && license.created_by !== auth.username) {
+            return sendError('FORBIDDEN', 'Bạn không có quyền quản lý key này', 403);
+          }
+          return jsonResponse({ success: true, license: { ...license, ...parseLicenseModules(license) } });
         }
-
-        // Xóa Key (DELETE)
-        if (method === "DELETE") {
-          await env.DB.prepare("DELETE FROM keys WHERE key = ?").bind(targetKey).run();
-          return jsonResponse({ ok: true, success: true, message: "Đã xóa vĩnh viễn key: " + targetKey });
-        }
-
-        // Ban Key
-        if (subAction === "ban" && method === "POST") {
-          await env.DB.prepare("UPDATE keys SET status = 'BANNED' WHERE key = ?").bind(targetKey).run();
-          return jsonResponse({ ok: true, success: true, message: "Đã khóa (Ban) key: " + targetKey });
-        }
-
-        // Unban Key
-        if (subAction === "unban" && method === "POST") {
-          const revertStatus = keyItem.activated_at ? "ACTIVE" : "UNUSED";
-          await env.DB.prepare("UPDATE keys SET status = ? WHERE key = ?").bind(revertStatus, targetKey).run();
-          return jsonResponse({ ok: true, success: true, message: "Đã mở khóa (Unban) key: " + targetKey });
-        }
-
-        // Reset Device ID
-        if (subAction === "reset-device" && method === "POST") {
-          await env.DB.prepare("UPDATE keys SET device_id = NULL WHERE key = ?").bind(targetKey).run();
-          return jsonResponse({ ok: true, success: true, message: "Đã xóa liên kết thiết bị cho key: " + targetKey });
+        if (method === 'DELETE') {
+          const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+          if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+          if (auth.role === 'seller' && license.created_by !== auth.username) {
+            return sendError('FORBIDDEN', 'Bạn không có quyền xóa key này', 403);
+          }
+          await env.DB.prepare('DELETE FROM licenses WHERE key = ?').bind(key).run();
+          return jsonResponse({ success: true, message: 'Key đã được xóa vĩnh viễn' });
         }
       }
 
-      // -----------------------------------------------------------------------
-      // 5. QUẢN LÝ SELLERS (Dành riêng cho Admin Chính)
-      // -----------------------------------------------------------------------
-      if (pathname === "/api/admin/sellers" && method === "GET") {
-        if (!isAdmin) return jsonError("Chỉ có Admin mới có quyền truy cập!", "FORBIDDEN", 403);
-
-        const { results } = await env.DB.prepare(`
-          SELECT 
-            s.id, s.username, s.name, s.role, s.allowed_tiers, s.max_keys, s.status, s.created_at,
-            (SELECT COUNT(*) FROM keys WHERE created_by = s.username) as total_keys_created
-          FROM sellers s
-          ORDER BY s.role DESC, s.created_at DESC
-        `).all();
-
-        return jsonResponse({ ok: true, success: true, sellers: results });
+      // POST /api/admin/keys/:key/ban
+      const banMatch = path.match(/^\/api\/admin\/keys\/([^\/]+)\/ban$/);
+      if (banMatch && method === 'POST') {
+        const key = decodeURIComponent(banMatch[1]);
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+        if (auth.role === 'seller' && license.created_by !== auth.username) {
+          return sendError('FORBIDDEN', 'Không có quyền thao tác', 403);
+        }
+        await env.DB.prepare("UPDATE licenses SET status = 'BANNED' WHERE key = ?").bind(key).run();
+        return jsonResponse({ success: true, message: 'Key banned' });
       }
 
-      // Tạo Seller mới
-      if (pathname === "/api/admin/sellers/create" && method === "POST") {
-        if (!isAdmin) return jsonError("Chỉ Admin mới có quyền tạo Seller!", "FORBIDDEN", 403);
-
-        let body;
-        try { body = await request.json(); } catch (e) { return jsonError("Invalid JSON"); }
-
-        const username = (body.username || "").trim().toLowerCase();
-        const password = (body.password || "").trim();
-        const name = (body.name || "").trim() || username;
-        const allowed_tiers = body.allowed_tiers || "all,aimlock,sensitive,regedit";
-        const max_keys = parseInt(body.max_keys) || 0;
-        const role = body.role === "admin" ? "admin" : "seller";
-
-        if (!username || !password) {
-          return jsonError("Tên đăng nhập và mật khẩu seller là bắt buộc!");
+      // POST /api/admin/keys/:key/unban
+      const unbanMatch = path.match(/^\/api\/admin\/keys\/([^\/]+)\/unban$/);
+      if (unbanMatch && method === 'POST') {
+        const key = decodeURIComponent(unbanMatch[1]);
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+        if (auth.role === 'seller' && license.created_by !== auth.username) {
+          return sendError('FORBIDDEN', 'Không có quyền thao tác', 403);
         }
+        const newStatus = license.device_id ? 'ACTIVE' : 'UNUSED';
+        await env.DB.prepare('UPDATE licenses SET status = ? WHERE key = ?').bind(newStatus, key).run();
+        return jsonResponse({ success: true, message: 'Key unbanned', status: newStatus });
+      }
 
-        const existing = await env.DB.prepare("SELECT id FROM sellers WHERE username = ?").bind(username).first();
-        if (existing) {
-          return jsonError("Tên đăng nhập này đã tồn tại! Vui lòng chọn tên khác.");
+      // POST /api/admin/keys/:key/revoke
+      const revokeMatch = path.match(/^\/api\/admin\/keys\/([^\/]+)\/revoke$/);
+      if (revokeMatch && method === 'POST') {
+        const key = decodeURIComponent(revokeMatch[1]);
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+        if (auth.role === 'seller' && license.created_by !== auth.username) {
+          return sendError('FORBIDDEN', 'Không có quyền thao tác', 403);
         }
+        await env.DB.prepare("UPDATE licenses SET status = 'REVOKED' WHERE key = ?").bind(key).run();
+        return jsonResponse({ success: true, message: 'Key revoked' });
+      }
 
-        const now = new Date().toISOString();
+      // POST /api/admin/keys/:key/reset-device
+      const resetMatch = path.match(/^\/api\/admin\/keys\/([^\/]+)\/reset-device$/);
+      if (resetMatch && method === 'POST') {
+        const key = decodeURIComponent(resetMatch[1]);
+        const license = await env.DB.prepare('SELECT * FROM licenses WHERE key = ?').bind(key).first();
+        if (!license) return sendError('KEY_NOT_FOUND', 'Key not found', 404);
+        if (auth.role === 'seller' && license.created_by !== auth.username) {
+          return sendError('FORBIDDEN', 'Không có quyền thao tác', 403);
+        }
         await env.DB.prepare(`
-          INSERT INTO sellers (username, password, name, role, allowed_tiers, max_keys, status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
-        `).bind(username, password, name, role, allowed_tiers, max_keys, now).run();
-
-        return jsonResponse({ ok: true, success: true, message: `Tạo tài khoản ${role.toUpperCase()} '${username}' thành công!` });
+          UPDATE licenses
+          SET device_id = NULL, device_name = NULL, status = 'UNUSED'
+          WHERE key = ?
+        `).bind(key).run();
+        return jsonResponse({ success: true, message: 'Đã reset HWID thiết bị thành công' });
       }
 
-      // Khóa / Mở khóa / Đổi mật khẩu / Xóa Seller
-      const sellerActionMatch = pathname.match(/^\/api\/admin\/sellers\/([^\/]+)(?:\/(toggle-status|change-password))?$/);
-      if (sellerActionMatch) {
-        if (!isAdmin) return jsonError("Chỉ Admin mới có quyền quản lý Sellers!", "FORBIDDEN", 403);
-
-        const targetUser = decodeURIComponent(sellerActionMatch[1]).toLowerCase();
-        const subAction = sellerActionMatch[2];
-
-        if (targetUser === "admin" && subAction !== "change-password") {
-          return jsonError("Không thể thay đổi trạng thái hoặc xóa tài khoản Master Admin!");
+      // 8. Seller Management (Master Admin Only)
+      if (path.startsWith('/api/admin/sellers')) {
+        if (auth.role !== 'admin') {
+          return sendError('FORBIDDEN', 'Chỉ Master Admin mới có quyền quản lý danh sách Đại Lý (Sellers)', 403);
         }
 
-        if (method === "DELETE") {
-          await env.DB.prepare("DELETE FROM sellers WHERE username = ?").bind(targetUser).run();
-          return jsonResponse({ ok: true, success: true, message: `Đã xóa tài khoản seller: ${targetUser}` });
+        // GET /api/admin/sellers
+        if (path === '/api/admin/sellers' && method === 'GET') {
+          const { results } = await env.DB.prepare(`
+            SELECT id, username, name, role, allowed_tiers, max_keys, used_keys, status, created_at
+            FROM sellers
+            ORDER BY id DESC
+          `).all();
+          return jsonResponse({ success: true, sellers: results || [] });
         }
 
-        if (subAction === "toggle-status" && method === "POST") {
-          const curr = await env.DB.prepare("SELECT status FROM sellers WHERE username = ?").bind(targetUser).first();
-          if (!curr) return jsonError("Không tìm thấy seller này!");
-          const newStatus = curr.status === "active" ? "blocked" : "active";
-          await env.DB.prepare("UPDATE sellers SET status = ? WHERE username = ?").bind(newStatus, targetUser).run();
-          return jsonResponse({ ok: true, success: true, message: `Đã đổi trạng thái seller thành '${newStatus}'!` });
+        // POST /api/admin/sellers/create
+        if (path === '/api/admin/sellers/create' && method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const username = (body.username || '').trim().toLowerCase();
+          const password = (body.password || '').trim();
+          const name = (body.name || username).trim();
+          const maxKeys = parseInt(body.max_keys ?? 100);
+          const allowedTiers = body.allowed_tiers || 'all,aimlock,sensitive,regedit';
+
+          if (!username || !password) {
+            return sendError('INVALID_REQUEST', 'Vui lòng điền tên đăng nhập và mật khẩu cho Seller');
+          }
+
+          try {
+            await env.DB.prepare(`
+              INSERT INTO sellers (username, password, name, max_keys, used_keys, allowed_tiers, status, created_at)
+              VALUES (?, ?, ?, ?, 0, ?, 'active', CURRENT_TIMESTAMP)
+            `).bind(username, password, name, maxKeys, allowedTiers).run();
+
+            return jsonResponse({ success: true, message: `Tạo tài khoản đại lý ${username} thành công!` });
+          } catch (e) {
+            return sendError('DB_ERROR', e.message.includes('UNIQUE') ? 'Tên đăng nhập đại lý đã tồn tại' : e.message, 400);
+          }
         }
 
-        if (subAction === "change-password" && method === "POST") {
-          let body;
-          try { body = await request.json(); } catch (e) { return jsonError("Invalid JSON"); }
-          const newPass = (body.password || "").trim();
-          if (!newPass) return jsonError("Mật khẩu mới không được để trống!");
-          await env.DB.prepare("UPDATE sellers SET password = ? WHERE username = ?").bind(newPass, targetUser).run();
-          return jsonResponse({ ok: true, success: true, message: `Đã cập nhật mật khẩu cho '${targetUser}' thành công!` });
+        // POST /api/admin/sellers/:id/quota
+        const quotaMatch = path.match(/^\/api\/admin\/sellers\/(\d+)\/quota$/);
+        if (quotaMatch && method === 'POST') {
+          const id = parseInt(quotaMatch[1]);
+          const body = await request.json().catch(() => ({}));
+          const maxKeys = parseInt(body.max_keys ?? 100);
+          await env.DB.prepare('UPDATE sellers SET max_keys = ? WHERE id = ?').bind(maxKeys, id).run();
+          return jsonResponse({ success: true, message: 'Đã cập nhật hạn mức quota thành công' });
+        }
+
+        // DELETE /api/admin/sellers/:id
+        const delSellerMatch = path.match(/^\/api\/admin\/sellers\/(\d+)$/);
+        if (delSellerMatch && method === 'DELETE') {
+          const id = parseInt(delSellerMatch[1]);
+          await env.DB.prepare('DELETE FROM sellers WHERE id = ?').bind(id).run();
+          return jsonResponse({ success: true, message: 'Đã xóa tài khoản đại lý' });
         }
       }
-
-      return jsonError("Admin Endpoint Not Found", "NOT_FOUND", 404);
     }
 
-    // =========================================================================
-    // ROUTE: GIAO DIỆN WEB ADMIN & SELLER PANEL (/admin)
-    // =========================================================================
-    if (pathname === "/admin" || pathname === "/admin/") {
-      return new Response(getAdminPanelHTML(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
-    }
-
-    return jsonError("Endpoint not found", "NOT_FOUND", 404);
+    return jsonResponse({ success: false, error: 'NOT_FOUND', message: 'Endpoint not found' }, 404);
   }
 };
 
-/**
- * =========================================================================
- * GIAO DIỆN HTML/CSS/JS CỦA ADMIN & SELLER PANEL (/admin)
- * =========================================================================
- */
-function getAdminPanelHTML() {
+// ----------------------------------------------------------------------------
+// Cyber Dark Glass Admin Panel HTML
+// ----------------------------------------------------------------------------
+function renderAdminHtml() {
   return `<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DNTWEAKS KEY SERVER - Admin & Seller Panel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>DNTWEAKS KEY SERVER - Cyber Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #060911;
-      --card: rgba(13, 20, 36, 0.85);
-      --border: rgba(56, 189, 248, 0.2);
-      --primary: #00e5ff;
+      --bg: #07090e;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(255, 255, 255, 0.12);
+      --primary: #06b6d4;
+      --primary-glow: rgba(6, 182, 212, 0.25);
+      --accent: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.25);
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: var(--bg);
-      color: #f1f5f9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg) 70%);
+      color: var(--text);
       min-height: 100vh;
+      padding: 24px 16px;
     }
-    .glass-card {
-      background: var(--card);
-      border: 1px solid var(--border);
+    .container { max-width: 1200px; margin: 0 auto; }
+    .glass {
+      background: var(--card-bg);
       backdrop-filter: blur(16px);
-      border-radius: 20px;
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
-    .badge-all { background: rgba(0, 229, 255, 0.15); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3); }
-    .badge-aimlock { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
-    .badge-sensitive { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-    .badge-regedit { background: rgba(234, 179, 8, 0.15); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.3); }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 20px; color: #fff;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+    .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .brand-badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      background: rgba(6, 182, 212, 0.15); color: var(--primary);
+      border: 1px solid rgba(6, 182, 212, 0.3); font-weight: 700;
+    }
+    .user-info { display: flex; align-items: center; gap: 14px; }
+    .role-tag {
+      font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+      background: rgba(139, 92, 246, 0.15); color: #c4b5fd;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .btn-logout {
+      background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5; padding: 6px 14px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-logout:hover { background: var(--danger); color: #fff; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab-btn {
+      padding: 10px 20px; border-radius: 10px; border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.03); color: var(--text-muted);
+      font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(139, 92, 246, 0.2));
+      color: #fff; border-color: var(--primary);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .stat-title { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+    .stat-val { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+    /* Generator Card */
+    .section-card { padding: 24px; margin-bottom: 24px; }
+    .section-title {
+      font-size: 16px; font-weight: 700; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px; color: #fff;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px; margin-bottom: 20px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+    input, select {
+      background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border);
+      color: var(--text); padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    /* Checkboxes Group */
+    .modules-picker {
+      background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 12px;
+      border: 1px solid var(--card-border); margin-bottom: 18px;
+    }
+    .checkbox-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px; margin-top: 10px;
+    }
+    .checkbox-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer; user-select: none; transition: all 0.2s;
+    }
+    .checkbox-btn:hover { background: rgba(255, 255, 255, 0.05); }
+    .checkbox-btn input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+    .checkbox-btn span { font-size: 13px; font-weight: 600; }
+
+    /* Quick combos */
+    .quick-combos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .combo-btn {
+      background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8; padding: 5px 12px; border-radius: 6px; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .combo-btn:hover { background: rgba(6, 182, 212, 0.2); color: #fff; border-color: var(--primary); }
+
+    /* Submit Button */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff; border: none; padding: 12px 24px; border-radius: 10px;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 15px var(--primary-glow); transition: all 0.2s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); opacity: 0.95; }
+
+    /* Key Output Box */
+    .key-result-box {
+      margin-top: 18px; padding: 18px; border-radius: 12px;
+      background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3);
+      display: none; align-items: center; justify-content: space-between; gap: 14px;
+    }
+    .key-result-text {
+      font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700;
+      color: var(--primary); letter-spacing: 1px; user-select: all;
+    }
+    .btn-copy {
+      background: rgba(6, 182, 212, 0.2); border: 1px solid var(--primary);
+      color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-copy:hover { background: var(--primary); }
+
+    /* Search & Filter Bar */
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    .filter-bar input { flex: 1; min-width: 200px; }
+    .filter-bar select { min-width: 140px; }
+
+    /* Table Styles */
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th {
+      padding: 12px 14px; color: var(--text-muted); font-weight: 600;
+      border-bottom: 1px solid var(--card-border); background: rgba(0, 0, 0, 0.2);
+    }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .key-cell {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+      color: #38bdf8; user-select: all;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+    }
+    .badge-ACTIVE { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-UNUSED { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .badge-BANNED { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-REVOKED { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-EXPIRED { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+    .mod-tag {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+      margin-right: 4px; display: inline-block;
+    }
+    .mod-aim { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .mod-sens { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .mod-reg { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    /* Action Buttons in Table */
+    .action-group { display: flex; gap: 6px; }
+    .btn-act {
+      padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-act-copy { background: rgba(6, 182, 212, 0.15); color: #38bdf8; border-color: rgba(6, 182, 212, 0.3); }
+    .btn-act-reset { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.3); }
+    .btn-act-ban { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+    .btn-act-unban { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3); }
+    .btn-act-del { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+    .btn-act:hover { opacity: 0.8; }
+
+    /* Login Modal Overlay */
+    #loginOverlay {
+      position: fixed; inset: 0; background: rgba(7, 9, 14, 0.95);
+      backdrop-filter: blur(20px); display: flex; align-items: center;
+      justify-content: center; z-index: 9999; padding: 20px;
+    }
+    .login-box {
+      width: 100%; max-width: 420px; padding: 32px; text-align: center;
+    }
+    .login-logo {
+      width: 54px; height: 54px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 26px; color: #fff; margin-bottom: 16px;
+      box-shadow: 0 0 25px var(--primary-glow);
+    }
+    .login-mode-switch {
+      display: flex; gap: 8px; margin: 20px 0 16px 0; background: rgba(0,0,0,0.3);
+      padding: 4px; border-radius: 10px; border: 1px solid var(--card-border);
+    }
+    .mode-btn {
+      flex: 1; padding: 8px; border-radius: 8px; border: none; background: transparent;
+      color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .mode-btn.active { background: rgba(255, 255, 255, 0.08); color: #fff; }
   </style>
 </head>
-<body class="p-3 md:p-6 antialiased">
+<body>
 
-  <!-- OVERLAY ĐĂNG NHẬP -->
-  <div id="login-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-md glass-card p-6 md:p-8 shadow-2xl border border-cyan-500/30">
-      <div class="text-center mb-6">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-2xl font-black mx-auto mb-3 shadow-lg shadow-cyan-500/30">
-          <i class="fas fa-shield-alt"></i>
-        </div>
-        <h2 class="text-2xl font-black tracking-wide text-white">DNTWEAKS KEY SERVER</h2>
-        <p class="text-xs text-gray-400 mt-1">Cổng Quản Trị Hệ Thống (Admin & Seller)</p>
+  <!-- Modal Đăng Nhập -->
+  <div id="loginOverlay">
+    <div class="glass login-box">
+      <div class="login-logo">⚡</div>
+      <h2 style="font-weight: 800; font-size: 22px;">DNTWEAKS PANEL</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Đăng nhập để quản lý Key & Bản quyền</p>
+
+      <div class="login-mode-switch">
+        <button class="mode-btn active" id="btnModeAdmin" onclick="setLoginMode('admin')">Master Admin</button>
+        <button class="mode-btn" id="btnModeSeller" onclick="setLoginMode('seller')">Đại Lý (Seller)</button>
       </div>
 
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-gray-300 mb-1">TÊN ĐĂNG NHẬP</label>
-          <input type="text" id="login-username" placeholder="admin hoặc tên seller..." class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-cyan-400 focus:outline-none">
+      <div id="formAdminLogin">
+        <div class="form-group" style="text-align: left; margin-bottom: 16px;">
+          <label>Mã Bí Mật (ADMIN_SECRET)</label>
+          <input type="password" id="adminSecretInput" placeholder="Nhập mã ADMIN_SECRET..." onkeyup="if(event.key==='Enter') doLogin()">
         </div>
-        <div>
-          <label class="block text-xs font-bold text-gray-300 mb-1">MẬT KHẨU</label>
-          <input type="password" id="login-password" placeholder="Nhập mật khẩu..." class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 text-sm focus:border-cyan-400 focus:outline-none" onkeyup="if(event.key==='Enter') handleLogin()">
-        </div>
-        <button onclick="handleLogin()" id="btn-login-submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black text-sm tracking-wider shadow-lg shadow-cyan-500/25 hover:opacity-95 active:scale-95 transition-all">
-          ĐĂNG NHẬP HỆ THỐNG
-        </button>
       </div>
 
-      <div class="mt-6 pt-4 border-t border-white/10 text-center">
-        <p class="text-[11px] text-gray-400">Tài khoản Admin mặc định: <b class="text-white">admin</b> / <b class="text-white">AdminPassword@123</b></p>
+      <div id="formSellerLogin" style="display: none;">
+        <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+          <label>Tên đăng nhập (Username)</label>
+          <input type="text" id="sellerUserInput" placeholder="Nhập tên đăng nhập..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
+        <div class="form-group" style="text-align: left; margin-bottom: 16px;">
+          <label>Mật khẩu</label>
+          <input type="password" id="sellerPassInput" placeholder="Nhập mật khẩu..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
       </div>
+
+      <button class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;" onclick="doLogin()">
+        VÀO HỆ THỐNG QUẢN TRỊ 🚀
+      </button>
     </div>
   </div>
 
-  <!-- MAIN DASHBOARD -->
-  <div id="main-panel" class="max-w-7xl mx-auto space-y-6 hidden">
-    
-    <!-- Top Bar Header -->
-    <header class="glass-card p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 border-b border-cyan-500/30">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-black text-white text-lg">
-          DN
-        </div>
+  <!-- Giao Diện Chính -->
+  <div class="container" id="mainApp" style="display: none;">
+    <header class="glass">
+      <div class="brand">
+        <div class="brand-logo">⚡</div>
         <div>
-          <div class="flex items-center space-x-2">
-            <h1 class="text-lg font-black text-white tracking-wide">DNTWEAKS EXTERNAL IOS</h1>
-            <span id="role-badge" class="text-[10px] font-extrabold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">ADMIN</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-title">DNTWEAKS EXTERNAL</span>
+            <span class="brand-badge">v2.5 PRO VIP</span>
           </div>
-          <p class="text-xs text-gray-400">Đang đăng nhập: <span id="current-user-name" class="font-bold text-white">...</span></p>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Hệ Thống Phân Phối Key Bản Quyền Tự Động</div>
         </div>
       </div>
-
-      <div class="flex items-center space-x-2">
-        <button onclick="switchTab('keys')" id="nav-btn-keys" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-400 text-black transition-all">
-          <i class="fas fa-key mr-1"></i> Quản Lý Keys
-        </button>
-        <button onclick="switchTab('sellers')" id="nav-btn-sellers" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-gray-300 hover:text-white transition-all hidden">
-          <i class="fas fa-users-cog mr-1"></i> Quản Lý Sellers
-        </button>
-        <button onclick="handleLogout()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all">
-          <i class="fas fa-sign-out-alt"></i> Đăng Xuất
-        </button>
+      <div class="user-info">
+        <span class="role-tag" id="userRoleBadge">ADMIN</span>
+        <span id="sellerQuotaBadge" style="display:none; font-size: 12px; color: var(--primary);">Quota: 0</span>
+        <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
       </div>
     </header>
 
-    <!-- Thống kê HUD -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-      <div class="glass-card p-4 border border-cyan-500/20">
-        <span class="text-[10px] font-bold text-gray-400 uppercase">TỔNG KEYS</span>
-        <h3 id="stat-total" class="text-2xl font-black text-white mt-1">0</h3>
-      </div>
-      <div class="glass-card p-4 border border-emerald-500/20">
-        <span class="text-[10px] font-bold text-gray-400 uppercase">ĐANG SỬ DỤNG</span>
-        <h3 id="stat-active" class="text-2xl font-black text-emerald-400 mt-1">0</h3>
-      </div>
-      <div class="glass-card p-4 border border-blue-500/20">
-        <span class="text-[10px] font-bold text-gray-400 uppercase">CHƯA SỬ DỤNG</span>
-        <h3 id="stat-unused" class="text-2xl font-black text-blue-400 mt-1">0</h3>
-      </div>
-      <div class="glass-card p-4 border border-amber-500/20">
-        <span class="text-[10px] font-bold text-gray-400 uppercase">ĐÃ HẾT HẠN</span>
-        <h3 id="stat-expired" class="text-2xl font-black text-amber-400 mt-1">0</h3>
-      </div>
-      <div class="glass-card p-4 border border-red-500/20">
-        <span class="text-[10px] font-bold text-gray-400 uppercase">ĐÃ KHÓA (BANNED)</span>
-        <h3 id="stat-banned" class="text-2xl font-black text-red-400 mt-1">0</h3>
-      </div>
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tabKeysBtn" onclick="switchTab('keys')">🔑 Quản Lý Keys Bản Quyền</button>
+      <button class="tab-btn" id="tabSellersBtn" onclick="switchTab('sellers')" style="display: none;">👥 Quản Lý Đại Lý (Sellers)</button>
     </div>
 
-    <!-- TAB 1: QUẢN LÝ KEYS -->
-    <div id="tab-keys" class="space-y-6">
-      
-      <!-- Hộp tạo Key mới (Tùy chọn phân hệ chức năng) -->
-      <div class="glass-card p-5 md:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h3 class="text-base font-black text-white flex items-center space-x-2">
-            <i class="fas fa-plus-circle text-cyan-400"></i>
-            <span>TẠO LICENSE KEY MỚI</span>
-          </h3>
-          <span id="selected-tier-preview" class="text-xs font-black px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-            GÓI: ALL ACCESS VIP (TRỌN BỘ)
-          </span>
+    <!-- TAB 1: KEYS MANAGEMENT -->
+    <div id="tabKeysContent">
+      <!-- Thống Kê Tổng Quan -->
+      <div class="stats-grid">
+        <div class="glass stat-card">
+          <div class="stat-title">TỔNG SỐ KEYS</div>
+          <div class="stat-val" id="statTotal" style="color: #38bdf8;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">ĐANG HOẠT ĐỘNG</div>
+          <div class="stat-val" id="statActive" style="color: #34d399;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">KEY CHƯA KÍCH HOẠT</div>
+          <div class="stat-val" id="statUnused" style="color: #cbd5e1;">0</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-title">HẾT HẠN / ĐÃ KHÓA</div>
+          <div class="stat-val" id="statBanned" style="color: #f87171;">0</div>
+        </div>
+      </div>
+
+      <!-- Card Tạo Key Mới -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>⚡ TẠO KEY BẢN QUYỀN MỚI</span>
         </div>
 
-        <!-- Tùy chọn Tích Chọn Phân Hệ (Aimlock, Sensitive, Regedit) -->
-        <div class="mb-4 p-3.5 rounded-xl bg-[#070b14] border border-white/10">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-            <label class="text-[11px] font-black text-gray-300 uppercase tracking-wide">
-              CHỌN CÁC PHÂN HỆ ĐƯỢC PHÉP DÙNG TRONG KEY:
+        <!-- Bộ Chọn Phân Hệ (Modules Checkboxes) -->
+        <div class="modules-picker">
+          <label style="color: #fff; font-size: 13px;">Tùy chọn phân hệ được phép kích hoạt trong Key:</label>
+          <div class="checkbox-row">
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modAimlock" checked>
+              <span>🎯 Aimlock VIP (V1 - V5)</span>
             </label>
-            <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
-              <span class="text-gray-400 mr-1">Chọn nhanh:</span>
-              <button type="button" onclick="selectQuickTier('all')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-cyan-500 hover:text-black font-bold transition-all text-white">Tất Cả</button>
-              <button type="button" onclick="selectQuickTier('aimlock')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-cyan-500 hover:text-black font-bold transition-all text-white">Chỉ Aimlock</button>
-              <button type="button" onclick="selectQuickTier('sensitive')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-orange-500 hover:text-black font-bold transition-all text-white">Chỉ Sensitive</button>
-              <button type="button" onclick="selectQuickTier('regedit')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-yellow-500 hover:text-black font-bold transition-all text-white">Chỉ Regedit</button>
-              <button type="button" onclick="selectQuickTier('aim_reg')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-purple-500 hover:text-black font-bold transition-all text-white">Aim + Reg</button>
-              <button type="button" onclick="selectQuickTier('aim_sens')" class="px-2 py-0.5 rounded bg-white/10 hover:bg-blue-500 hover:text-black font-bold transition-all text-white">Aim + Sens</button>
-            </div>
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modSensitive" checked>
+              <span>⚡ Sensitive VIP (V1 - V5)</span>
+            </label>
+            <label class="checkbox-btn">
+              <input type="checkbox" id="modRegedit" checked>
+              <span>⚙️ Regedit VIP (V1 - V5)</span>
+            </label>
           </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-cyan-500/20 hover:border-cyan-400 cursor-pointer transition-all">
-              <input type="checkbox" id="mod-aimlock" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-cyan-400 focus:ring-0 bg-transparent">
-              <div class="flex-1">
-                <div class="text-xs font-black text-cyan-300 flex items-center space-x-1.5">
-                  <i class="fas fa-crosshairs"></i>
-                  <span>AIMLOCK VIP (V1 - V5)</span>
-                </div>
-                <div class="text-[10px] text-gray-400">Khóa tâm đầu & hỗ trợ ghim tâm</div>
-              </div>
-            </label>
-
-            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-orange-500/20 hover:border-orange-400 cursor-pointer transition-all">
-              <input type="checkbox" id="mod-sensitive" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-orange-400 focus:ring-0 bg-transparent">
-              <div class="flex-1">
-                <div class="text-xs font-black text-orange-300 flex items-center space-x-1.5">
-                  <i class="fas fa-bolt"></i>
-                  <span>SENSITIVE VIP (V1 - V5)</span>
-                </div>
-                <div class="text-[10px] text-gray-400">Tăng tốc cảm ứng & gia tốc DPI</div>
-              </div>
-            </label>
-
-            <label class="flex items-center space-x-3 p-2.5 rounded-lg bg-white/[0.03] border border-yellow-500/20 hover:border-yellow-400 cursor-pointer transition-all">
-              <input type="checkbox" id="mod-regedit" checked onchange="updateTierPreview()" class="w-4 h-4 rounded text-yellow-400 focus:ring-0 bg-transparent">
-              <div class="flex-1">
-                <div class="text-xs font-black text-yellow-300 flex items-center space-x-1.5">
-                  <i class="fas fa-sliders-h"></i>
-                  <span>REGEDIT VIP (V1 - V5)</span>
-                </div>
-                <div class="text-[10px] text-gray-400">Ghi đè thông số thanh ghi Sandbox</div>
-              </div>
-            </label>
+          <div class="quick-combos">
+            <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Chọn nhanh:</span>
+            <button class="combo-btn" onclick="selectCombos('all')">VIP ALL (Trọn Bộ)</button>
+            <button class="combo-btn" onclick="selectCombos('aim')">Chỉ Aimlock</button>
+            <button class="combo-btn" onclick="selectCombos('sens')">Chỉ Sensitive</button>
+            <button class="combo-btn" onclick="selectCombos('reg')">Chỉ Regedit</button>
+            <button class="combo-btn" onclick="selectCombos('aim_reg')">Aim + Reg</button>
+            <button class="combo-btn" onclick="selectCombos('aim_sens')">Aim + Sens</button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">THỜI HẠN</label>
-            <select id="create-duration" class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs font-bold focus:border-cyan-400 focus:outline-none">
-              <option value="1">1 Ngày (24 Giờ)</option>
-              <option value="3">3 Ngày</option>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Thời Hạn Bản Quyền</label>
+            <select id="keyDuration">
+              <option value="1">1 Ngày (Dùng Thử)</option>
+              <option value="3">3 Ngày (Trải Nghiệm)</option>
               <option value="7">7 Ngày (1 Tuần)</option>
-              <option value="30" selected>30 Ngày (1 Tháng)</option>
+              <option value="30" selected>30 Ngày (1 Tháng VIP)</option>
               <option value="90">90 Ngày (3 Tháng)</option>
               <option value="365">365 Ngày (1 Năm)</option>
-              <option value="-1">🔥 VĨNH VIỄN (Lifetime)</option>
+              <option value="-1">Vĩnh Viễn (Lifetime VIP)</option>
             </select>
           </div>
+          <div class="form-group">
+            <label>Số Thiết Bị Tối Đa (Max Devices)</label>
+            <input type="number" id="maxDevices" value="1" min="1">
+          </div>
+          <div class="form-group">
+            <label>Ghi Chú Khách Hàng / Đơn Hàng</label>
+            <input type="text" id="keyNote" placeholder="Ví dụ: Khách Facebook Zalo, Order #88...">
+          </div>
+        </div>
 
+        <button class="btn-primary" onclick="createKey()">
+          <span>🚀 TẠO MÃ KEY NGAY</span>
+        </button>
+
+        <div class="key-result-box" id="keyResultBox">
           <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">SỐ LƯỢNG KEY</label>
-            <input type="number" id="create-quantity" value="1" min="1" max="100" class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs font-bold focus:border-cyan-400 focus:outline-none">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">KEY MỚI ĐÃ TẠO THÀNH CÔNG:</div>
+            <div class="key-result-text" id="createdKeyText">DNT-ALL-XXXX-YYYY-ZZZZ</div>
+            <div id="createdKeyDetails" style="font-size: 12px; color: #cbd5e1; margin-top: 4px;"></div>
           </div>
-
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">GHI CHÚ (TÊN KHÁCH)</label>
-            <input type="text" id="create-note" placeholder="VD: Khách Zalo DucNam..." class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs focus:border-cyan-400 focus:outline-none">
-          </div>
-
-          <div class="flex items-end">
-            <button onclick="handleCreateKey()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black text-xs uppercase shadow-md shadow-cyan-500/20 hover:opacity-90 active:scale-95 transition-all">
-              ⚡ TẠO KEY NGAY
-            </button>
-          </div>
+          <button class="btn-copy" onclick="copyCreatedKey()">📋 SAO CHÉP KEY</button>
         </div>
       </div>
 
       <!-- Danh Sách Keys -->
-      <div class="glass-card p-5 md:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div class="flex items-center space-x-2">
-            <h3 class="text-base font-black text-white">DANH SÁCH KEYS</h3>
-            <span id="keys-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">0 key</span>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <input type="text" id="search-input" placeholder="Tìm theo Key, HWID, Ghi chú..." class="px-3.5 py-2 rounded-xl bg-[#0a101d] border border-white/10 text-xs text-white placeholder-gray-500 focus:border-cyan-400 focus:outline-none w-60" onkeyup="if(event.key==='Enter') loadKeys()">
-            <select id="filter-tier" onchange="loadKeys()" class="px-3 py-2 rounded-xl bg-[#0a101d] border border-white/10 text-xs text-white">
-              <option value="">Tất cả loại tier</option>
-              <option value="all">VIP ALL</option>
-              <option value="aimlock">AIMLOCK</option>
-              <option value="sensitive">SENSITIVE</option>
-              <option value="regedit">REGEDIT</option>
-            </select>
-            <select id="filter-status" onchange="loadKeys()" class="px-3 py-2 rounded-xl bg-[#0a101d] border border-white/10 text-xs text-white">
-              <option value="">Tất cả trạng thái</option>
-              <option value="ACTIVE">ACTIVE (Đang dùng)</option>
-              <option value="UNUSED">UNUSED (Chưa dùng)</option>
-              <option value="EXPIRED">EXPIRED (Hết hạn)</option>
-              <option value="BANNED">BANNED (Bị khóa)</option>
-            </select>
-            <button onclick="loadKeys()" class="px-3.5 py-2 rounded-xl bg-white/10 text-xs font-bold text-gray-200 hover:bg-white/20">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-          </div>
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>📋 DANH SÁCH KEY BẢN QUYỀN TRÊN MÁY CHỦ</span>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-gray-300">
-            <thead class="text-[11px] uppercase bg-white/[0.03] text-gray-400 border-b border-white/10">
+        <div class="filter-bar">
+          <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm theo Key, HWID Thiết bị, Ghi chú..." oninput="debounceLoadKeys()">
+          <select id="statusFilter" onchange="loadKeys()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
+            <option value="UNUSED">Chưa kích hoạt (UNUSED)</option>
+            <option value="BANNED">Đã khóa (BANNED)</option>
+            <option value="EXPIRED">Đã hết hạn (EXPIRED)</option>
+          </select>
+          <select id="tierFilter" onchange="loadKeys()">
+            <option value="">Tất cả phân hệ</option>
+            <option value="all">VIP ALL</option>
+            <option value="aimlock">Aimlock</option>
+            <option value="sensitive">Sensitive</option>
+            <option value="regedit">Regedit</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
               <tr>
-                <th class="py-3 px-3">Mã Key</th>
-                <th class="py-3 px-3">Phân Hệ</th>
-                <th class="py-3 px-3">Người Tạo</th>
-                <th class="py-3 px-3">Trạng Thái</th>
-                <th class="py-3 px-3">Hạn Dùng</th>
-                <th class="py-3 px-3">HWID Thiết Bị</th>
-                <th class="py-3 px-3">Ghi Chú</th>
-                <th class="py-3 px-3 text-right">Thao Tác</th>
+                <th>MÃ KEY</th>
+                <th>PHÂN HỆ CẤP PHÉP</th>
+                <th>TRẠNG THÁI</th>
+                <th>THỜI HẠN</th>
+                <th>THIẾT BỊ LIÊN KẾT (HWID)</th>
+                <th>NGƯỜI TẠO</th>
+                <th>THAO TÁC</th>
               </tr>
             </thead>
-            <tbody id="keys-tbody" class="divide-y divide-white/5 font-mono">
-              <!-- Load dynamic data -->
+            <tbody id="keysTableBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Đang tải dữ liệu...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-
     </div>
 
-    <!-- TAB 2: QUẢN LÝ SELLERS (ADMIN ONLY) -->
-    <div id="tab-sellers" class="space-y-6 hidden">
-      
-      <!-- Hộp tạo Seller mới -->
-      <div class="glass-card p-5 md:p-6">
-        <h3 class="text-base font-black text-white mb-4 flex items-center space-x-2">
-          <i class="fas fa-user-plus text-cyan-400"></i>
-          <span>TẠO TÀI KHOẢN SELLER MỚI</span>
-        </h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">TÊN ĐĂNG NHẬP</label>
-            <input type="text" id="seller-username" placeholder="seller_ducnam..." class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs focus:border-cyan-400 focus:outline-none">
+    <!-- TAB 2: SELLERS MANAGEMENT (ADMIN ONLY) -->
+    <div id="tabSellersContent" style="display: none;">
+      <!-- Card Thêm Đại Lý -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>👥 TẠO TÀI KHOẢN ĐẠI LÝ (SELLER) MỚI</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Tên Đăng Nhập (Username)</label>
+            <input type="text" id="sellerUsername" placeholder="ví dụ: seller_vip01">
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">MẬT KHẨU</label>
-            <input type="text" id="seller-password" placeholder="Mật khẩu seller..." class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs focus:border-cyan-400 focus:outline-none">
+          <div class="form-group">
+            <label>Mật Khẩu</label>
+            <input type="text" id="sellerPassword" placeholder="Nhập mật khẩu cho seller">
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">TÊN HIỂN THỊ</label>
-            <input type="text" id="seller-name" placeholder="Đại Lý Miền Bắc..." class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs focus:border-cyan-400 focus:outline-none">
+          <div class="form-group">
+            <label>Tên Hiển Thị (Display Name)</label>
+            <input type="text" id="sellerName" placeholder="ví dụ: Đại Lý Miền Nam">
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-gray-400 mb-1">QUYỀN TẠO KEY</label>
-            <select id="seller-allowed-tiers" class="w-full px-3 py-2.5 rounded-xl bg-[#0a101d] border border-white/10 text-white text-xs font-bold focus:border-cyan-400 focus:outline-none">
-              <option value="all,aimlock,sensitive,regedit">Tất cả 4 loại (All, Aim, Sens, Reg)</option>
-              <option value="aimlock">Chỉ được tạo Aimlock</option>
-              <option value="sensitive">Chỉ được tạo Sensitive</option>
-              <option value="regedit">Chỉ được tạo Regedit</option>
-              <option value="aimlock,sensitive,regedit">3 Phân hệ lẻ (Không tạo được ALL)</option>
-            </select>
+          <div class="form-group">
+            <label>Hạn Mức Tạo Key (Quota)</label>
+            <input type="number" id="sellerMaxKeys" value="100" min="0" placeholder="0 = Không giới hạn">
           </div>
         </div>
-
-        <div class="mt-4 flex justify-end">
-          <button onclick="handleCreateSeller()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-500 text-black font-black text-xs uppercase shadow-md shadow-emerald-500/20 hover:opacity-90 active:scale-95 transition-all">
-            + THÊM TÀI KHOẢN SELLER
-          </button>
-        </div>
+        <button class="btn-primary" onclick="createSeller()">
+          <span>➕ TẠO ĐẠI LÝ MỚI</span>
+        </button>
       </div>
 
-      <!-- Danh sách Sellers -->
-      <div class="glass-card p-5 md:p-6">
-        <h3 class="text-base font-black text-white mb-4">DANH SÁCH TÀI KHOẢN SELLER & ADMIN</h3>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-gray-300">
-            <thead class="text-[11px] uppercase bg-white/[0.03] text-gray-400 border-b border-white/10">
+      <!-- Bảng Danh Sách Đại Lý -->
+      <div class="glass section-card">
+        <div class="section-title">
+          <span>👥 DANH SÁCH ĐẠI LÝ ĐANG HOẠT ĐỘNG</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
               <tr>
-                <th class="py-3 px-3">Tài Khoản</th>
-                <th class="py-3 px-3">Tên Hiển Thị</th>
-                <th class="py-3 px-3">Cấp Bậc (Role)</th>
-                <th class="py-3 px-3">Quyền Loại Key</th>
-                <th class="py-3 px-3">Tổng Key Đã Tạo</th>
-                <th class="py-3 px-3">Trạng Thái</th>
-                <th class="py-3 px-3 text-right">Thao Tác</th>
+                <th>ID</th>
+                <th>TÊN ĐĂNG NHẬP</th>
+                <th>TÊN HIỂN THỊ</th>
+                <th>QUOTA (ĐÃ DÙNG / TỐI ĐA)</th>
+                <th>NGÀY TẠO</th>
+                <th>THAO TÁC</th>
               </tr>
             </thead>
-            <tbody id="sellers-tbody" class="divide-y divide-white/5 font-mono">
-              <!-- Load dynamic seller data -->
+            <tbody id="sellersTableBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Đang tải danh sách đại lý...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-
     </div>
-
   </div>
 
   <script>
-    let authToken = localStorage.getItem('dntweaks_token') || '';
-    let currentUser = null;
+    let currentToken = localStorage.getItem('dnt_token') || '';
+    let currentRole = localStorage.getItem('dnt_role') || 'admin';
+    let currentUsername = localStorage.getItem('dnt_user') || 'admin';
+    let loginMode = 'admin';
+    let debounceTimer = null;
 
-    // Khởi động
     window.addEventListener('DOMContentLoaded', () => {
-      if (authToken) {
-        checkSession();
+      if (currentToken) {
+        initSession();
       }
     });
 
-    async function apiRequest(endpoint, method = 'GET', body = null) {
-      const options = {
-        method,
-        headers: {
-          'Authorization': 'Bearer ' + authToken,
-          'Content-Type': 'application/json'
-        }
-      };
-      if (body) options.body = JSON.stringify(body);
-
-      try {
-        const res = await fetch('/api' + endpoint, options);
-        if (res.status === 401) {
-          handleLogout();
-          return null;
-        }
-        return await res.json();
-      } catch (e) {
-        alert('Lỗi kết nối máy chủ API: ' + e.message);
-        return null;
-      }
+    function setLoginMode(mode) {
+      loginMode = mode;
+      document.getElementById('btnModeAdmin').classList.toggle('active', mode === 'admin');
+      document.getElementById('btnModeSeller').classList.toggle('active', mode === 'seller');
+      document.getElementById('formAdminLogin').style.display = mode === 'admin' ? 'block' : 'none';
+      document.getElementById('formSellerLogin').style.display = mode === 'seller' ? 'block' : 'none';
     }
 
-    async function handleLogin() {
-      const u = document.getElementById('login-username').value.trim();
-      const p = document.getElementById('login-password').value.trim();
-      if (!u || !p) return alert('Vui lòng nhập tài khoản và mật khẩu!');
-
-      const btn = document.getElementById('btn-login-submit');
-      btn.innerText = 'ĐANG ĐĂNG NHẬP...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/auth/login', {
+    async function doLogin() {
+      if (loginMode === 'admin') {
+        const secret = document.getElementById('adminSecretInput').value.trim();
+        if (!secret) return alert('Vui lòng nhập ADMIN_SECRET');
+        const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p })
+          body: JSON.stringify({ secret })
         });
         const data = await res.json();
-
-        if (data.ok && data.token) {
-          authToken = data.token;
-          currentUser = data.user;
-          localStorage.setItem('dntweaks_token', authToken);
-          localStorage.setItem('dntweaks_user', JSON.stringify(currentUser));
-
-          setupUIForUser();
+        if (data && data.success) {
+          saveSession(data.token, data.role, data.username);
         } else {
-          alert('Đăng nhập thất bại: ' + (data.message || 'Sai mật khẩu!'));
+          alert('Sai ADMIN_SECRET!');
         }
-      } catch (e) {
-        alert('Lỗi: ' + e.message);
-      } finally {
-        btn.innerText = 'ĐĂNG NHẬP HỆ THỐNG';
-        btn.disabled = false;
+      } else {
+        const username = document.getElementById('sellerUserInput').value.trim();
+        const password = document.getElementById('sellerPassInput').value.trim();
+        if (!username || !password) return alert('Vui lòng nhập tên đăng nhập và mật khẩu');
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          saveSession(data.token, data.role, data.username, data.quota_remaining);
+        } else {
+          alert(data.message || 'Sai thông tin đăng nhập!');
+        }
       }
     }
 
-    function handleLogout() {
-      authToken = '';
-      currentUser = null;
-      localStorage.removeItem('dntweaks_token');
-      localStorage.removeItem('dntweaks_user');
-      document.getElementById('login-modal').classList.remove('hidden');
-      document.getElementById('main-panel').classList.add('hidden');
+    function saveSession(token, role, username, quota = null) {
+      currentToken = token;
+      currentRole = role;
+      currentUsername = username;
+      localStorage.setItem('dnt_token', token);
+      localStorage.setItem('dnt_role', role);
+      localStorage.setItem('dnt_user', username);
+      initSession();
     }
 
-    function checkSession() {
-      try {
-        currentUser = JSON.parse(localStorage.getItem('dntweaks_user'));
-      } catch(e){}
-      setupUIForUser();
-    }
-
-    function setupUIForUser() {
-      document.getElementById('login-modal').classList.add('hidden');
-      document.getElementById('main-panel').classList.remove('hidden');
-
-      const isAdm = currentUser && currentUser.role === 'admin';
-      document.getElementById('current-user-name').innerText = currentUser ? (currentUser.name || currentUser.username) : 'Admin';
-      document.getElementById('role-badge').innerText = isAdm ? 'MASTER ADMIN' : 'SELLER PRO';
-      document.getElementById('role-badge').className = isAdm 
-        ? 'text-[10px] font-extrabold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-        : 'text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30';
-
-      const sellerBtn = document.getElementById('nav-btn-sellers');
-      if (isAdm) {
-        sellerBtn.classList.remove('hidden');
+    function initSession() {
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      document.getElementById('userRoleBadge').textContent = currentRole === 'admin' ? '👑 MASTER ADMIN' : '👤 SELLER: ' + currentUsername.toUpperCase();
+      
+      if (currentRole === 'admin') {
+        document.getElementById('tabSellersBtn').style.display = 'inline-block';
       } else {
-        sellerBtn.classList.add('hidden');
+        document.getElementById('tabSellersBtn').style.display = 'none';
       }
 
       loadStats();
       loadKeys();
     }
 
-    function switchTab(tab) {
-      const keysTab = document.getElementById('tab-keys');
-      const sellersTab = document.getElementById('tab-sellers');
-      const keysBtn = document.getElementById('nav-btn-keys');
-      const sellersBtn = document.getElementById('nav-btn-sellers');
+    function logout() {
+      localStorage.removeItem('dnt_token');
+      localStorage.removeItem('dnt_role');
+      localStorage.removeItem('dnt_user');
+      location.reload();
+    }
 
-      if (tab === 'keys') {
-        keysTab.classList.remove('hidden');
-        sellersTab.classList.add('hidden');
-        keysBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-cyan-400 text-black transition-all';
-        sellersBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-gray-300 hover:text-white transition-all';
-        loadKeys();
-      } else {
-        keysTab.classList.add('hidden');
-        sellersTab.classList.remove('hidden');
-        sellersBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-cyan-400 text-black transition-all';
-        keysBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-white/5 text-gray-300 hover:text-white transition-all';
-        loadSellers();
+    function switchTab(tab) {
+      document.getElementById('tabKeysBtn').classList.toggle('active', tab === 'keys');
+      document.getElementById('tabSellersBtn').classList.toggle('active', tab === 'sellers');
+      document.getElementById('tabKeysContent').style.display = tab === 'keys' ? 'block' : 'none';
+      document.getElementById('tabSellersContent').style.display = tab === 'sellers' ? 'block' : 'none';
+      if (tab === 'sellers') loadSellers();
+      if (tab === 'keys') loadKeys();
+    }
+
+    async function apiCall(endpoint, method = 'GET', body = null) {
+      const headers = {
+        'Authorization': 'Bearer ' + currentToken,
+        'Content-Type': 'application/json'
+      };
+      const opt = { method, headers };
+      if (body) opt.body = JSON.stringify(body);
+
+      try {
+        const res = await fetch(endpoint, opt);
+        if (res.status === 401) {
+          alert('Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.');
+          logout();
+          return null;
+        }
+        return await res.json();
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+        return null;
       }
+    }
+
+    // Quick Combo Buttons
+    function selectCombos(type) {
+      const aim = document.getElementById('modAimlock');
+      const sens = document.getElementById('modSensitive');
+      const reg = document.getElementById('modRegedit');
+      if (type === 'all') { aim.checked = true; sens.checked = true; reg.checked = true; }
+      else if (type === 'aim') { aim.checked = true; sens.checked = false; reg.checked = false; }
+      else if (type === 'sens') { aim.checked = false; sens.checked = true; reg.checked = false; }
+      else if (type === 'reg') { aim.checked = false; sens.checked = false; reg.checked = true; }
+      else if (type === 'aim_reg') { aim.checked = true; sens.checked = false; reg.checked = true; }
+      else if (type === 'aim_sens') { aim.checked = true; sens.checked = true; reg.checked = false; }
+    }
+
+    async function createKey() {
+      const modules = [];
+      if (document.getElementById('modAimlock').checked) modules.push('aimlock');
+      if (document.getElementById('modSensitive').checked) modules.push('sensitive');
+      if (document.getElementById('modRegedit').checked) modules.push('regedit');
+
+      if (modules.length === 0) {
+        return alert('Vui lòng chọn ít nhất 1 phân hệ cho Key (Aimlock, Sensitive, hoặc Regedit)!');
+      }
+
+      const duration_days = parseInt(document.getElementById('keyDuration').value);
+      const max_devices = parseInt(document.getElementById('maxDevices').value);
+      const note = document.getElementById('keyNote').value.trim();
+
+      const data = await apiCall('/api/admin/keys/create', 'POST', {
+        modules,
+        duration_days,
+        max_devices,
+        note
+      });
+
+      if (data && data.success) {
+        document.getElementById('keyResultBox').style.display = 'flex';
+        document.getElementById('createdKeyText').textContent = data.key;
+        document.getElementById('createdKeyDetails').textContent = 
+          'Phân hệ: ' + (data.tierName || data.tier) + ' • Hạn dùng: ' + (data.duration_days === -1 ? 'Vĩnh viễn' : data.duration_days + ' Ngày');
+        loadStats();
+        loadKeys();
+      } else if (data) {
+        alert('Lỗi tạo key: ' + (data.message || data.error));
+      }
+    }
+
+    function copyCreatedKey() {
+      const key = document.getElementById('createdKeyText').textContent;
+      navigator.clipboard.writeText(key).then(() => {
+        alert('Đã sao chép Key: ' + key);
+      });
     }
 
     async function loadStats() {
-      const data = await apiRequest('/admin/stats');
-      if (data && data.stats) {
-        document.getElementById('stat-total').innerText = data.stats.totalKeys;
-        document.getElementById('stat-active').innerText = data.stats.activeKeys;
-        document.getElementById('stat-unused').innerText = data.stats.unusedKeys;
-        document.getElementById('stat-expired').innerText = data.stats.expiredKeys;
-        document.getElementById('stat-banned').innerText = data.stats.bannedKeys;
+      const data = await apiCall('/api/admin/stats');
+      if (data && data.success) {
+        document.getElementById('statTotal').textContent = data.stats.total_keys || 0;
+        document.getElementById('statActive').textContent = data.stats.active_keys || 0;
+        document.getElementById('statUnused').textContent = data.stats.unused_keys || 0;
+        document.getElementById('statBanned').textContent = (data.stats.banned_keys || 0) + (data.stats.expired_keys || 0);
       }
     }
 
+    function debounceLoadKeys() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadKeys, 300);
+    }
+
     async function loadKeys() {
-      const search = document.getElementById('search-input').value.trim();
-      const tier = document.getElementById('filter-tier').value;
-      const status = document.getElementById('filter-status').value;
+      const search = document.getElementById('searchInput').value.trim();
+      const status = document.getElementById('statusFilter').value;
+      const tier = document.getElementById('tierFilter').value;
 
-      let url = '/admin/keys?';
-      if (search) url += 'search=' + encodeURIComponent(search) + '&';
-      if (tier) url += 'tier=' + tier + '&';
-      if (status) url += 'status=' + status + '&';
+      let q = '/api/admin/keys?search=' + encodeURIComponent(search);
+      if (status) q += '&status=' + encodeURIComponent(status);
+      if (tier) q += '&tier=' + encodeURIComponent(tier);
 
-      const data = await apiRequest(url);
-      if (!data || !data.keys) return;
-
-      document.getElementById('keys-count-badge').innerText = data.keys.length + ' key';
-      const tbody = document.getElementById('keys-tbody');
-      tbody.innerHTML = '';
-
-      if (data.keys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">Chưa có mã key nào phù hợp.</td></tr>';
+      const data = await apiCall(q);
+      const tbody = document.getElementById('keysTableBody');
+      if (!data || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 20px;">Lỗi tải dữ liệu</td></tr>';
         return;
       }
 
+      if (!data.keys || data.keys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Không tìm thấy Key nào phù hợp</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
       data.keys.forEach(k => {
-        let tierBadgesHtml = '';
-        const rawTier = (k.tier || 'all').toLowerCase();
-        if (rawTier === 'all') {
-          tierBadgesHtml = '<span class="px-2 py-0.5 rounded text-[10px] font-black badge-all">VIP ALL</span>';
-        } else {
-          const parts = rawTier.split(',').map(p => p.trim());
-          if (parts.includes('all') || (parts.includes('aimlock') && parts.includes('sensitive') && parts.includes('regedit'))) {
-            tierBadgesHtml = '<span class="px-2 py-0.5 rounded text-[10px] font-black badge-all">VIP ALL</span>';
-          } else {
-            tierBadgesHtml = parts.map(p => {
-              if (p === 'aimlock') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-aimlock mr-1">AIMLOCK</span>';
-              if (p === 'sensitive') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-sensitive mr-1">SENS</span>';
-              if (p === 'regedit') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black badge-regedit mr-1">REGEDIT</span>';
-              return '<span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-white/10 text-white mr-1">' + p.toUpperCase() + '</span>';
-            }).join('');
-          }
+        const tr = document.createElement('tr');
+
+        // Module badges
+        let modBadges = '';
+        const mods = k.allowed_modules_list || [];
+        if (mods.includes('aimlock')) modBadges += '<span class="mod-tag mod-aim">AIM</span>';
+        if (mods.includes('sensitive')) modBadges += '<span class="mod-tag mod-sens">SENS</span>';
+        if (mods.includes('regedit')) modBadges += '<span class="mod-tag mod-reg">REG</span>';
+        if (!modBadges) modBadges = '<span class="mod-tag" style="background:#334155;color:#94a3b8;">' + (k.product || 'ALL') + '</span>';
+
+        // Duration text
+        let durText = k.duration_days === -1 ? 'Vĩnh viễn' : (k.duration_days + ' Ngày');
+        if (k.expires_at) {
+          const expDate = new Date(k.expires_at);
+          durText += '<br><span style="font-size: 11px; color: var(--text-muted);">' + expDate.toLocaleDateString('vi-VN') + '</span>';
         }
 
-        let statusClass = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-        if (k.status === 'ACTIVE') statusClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-        else if (k.status === 'BANNED') statusClass = 'text-red-400 bg-red-500/10 border-red-500/20';
-        else if (k.status === 'EXPIRED') statusClass = 'text-gray-400 bg-white/5 border-white/10';
+        // Action Buttons
+        let actBtns = \`
+          <button class="btn-act btn-act-copy" onclick="copyText('\${k.key}')" title="Sao chép">📋 Copy</button>
+        \`;
 
-        const durText = k.duration_days === -1 ? 'Vĩnh viễn' : (k.duration_days + ' ngày');
-        const devText = k.device_id ? ('...' + k.device_id.slice(-8)) : '<span class="text-gray-500">Chưa gắn</span>';
+        if (k.device_id) {
+          actBtns += \`<button class="btn-act btn-act-reset" onclick="resetDevice('\${k.key}')" title="Reset HWID">🔄 Reset HWID</button>\`;
+        }
 
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-white/[0.02] transition-colors';
+        if (k.status === 'UNUSED' || k.status === 'ACTIVE') {
+          actBtns += \`<button class="btn-act btn-act-ban" onclick="banKey('\${k.key}')">🚫 Ban</button>\`;
+        } else if (k.status === 'BANNED') {
+          actBtns += \`<button class="btn-act btn-act-unban" onclick="unbanKey('\${k.key}')">✓ Mở Ban</button>\`;
+        }
+
+        actBtns += \`<button class="btn-act btn-act-del" onclick="deleteKey('\${k.key}')">🗑️ Xóa</button>\`;
+
         tr.innerHTML = \`
-          <td class="py-3 px-3 font-bold text-white select-all">\${k.key}</td>
-          <td class="py-3 px-3"><div class="flex flex-wrap gap-1">\${tierBadgesHtml}</div></td>
-          <td class="py-3 px-3 text-cyan-300">@\${k.created_by}</td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border \${statusClass}">\${k.status}</span></td>
-          <td class="py-3 px-3 text-gray-300">\${durText}</td>
-          <td class="py-3 px-3 font-mono text-[11px]">\${devText}</td>
-          <td class="py-3 px-3 text-gray-400 truncate max-w-[150px]">\${k.note || '-'}</td>
-          <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
-            <button onclick="copyToClipboard('\${k.key}')" title="Sao chép key" class="p-1.5 rounded bg-white/5 hover:bg-white/15 text-gray-300"><i class="fas fa-copy"></i></button>
-            \${k.status === 'BANNED' 
-              ? \`<button onclick="unbanKey('\${k.key}')" title="Mở khóa" class="p-1.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400"><i class="fas fa-unlock"></i></button>\` 
-              : \`<button onclick="banKey('\${k.key}')" title="Khóa (Ban)" class="p-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400"><i class="fas fa-ban"></i></button>\`}
-            \${k.device_id ? \`<button onclick="resetDevice('\${k.key}')" title="Reset HWID" class="p-1.5 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-400"><i class="fas fa-redo"></i></button>\` : ''}
-            <button onclick="deleteKey('\${k.key}')" title="Xóa vĩnh viễn" class="p-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400"><i class="fas fa-trash"></i></button>
+          <td><span class="key-cell">\${k.key}</span></td>
+          <td>\${modBadges}</td>
+          <td><span class="badge badge-\${k.status}">\${k.status}</span></td>
+          <td>\${durText}</td>
+          <td style="font-family: monospace; font-size: 11px; color: var(--text-muted);">
+            \${k.device_id ? (k.device_id.substring(0, 16) + '...<br><span style="color:#38bdf8;">' + (k.device_name || 'iOS Device') + '</span>') : 'Chưa liên kết'}
           </td>
+          <td><span style="font-size: 12px; color: #a78bfa;">\${k.created_by || 'admin'}</span></td>
+          <td><div class="action-group">\${actBtns}</div></td>
         \`;
         tbody.appendChild(tr);
       });
     }
 
-    function selectQuickTier(mode) {
-      const aim = document.getElementById('mod-aimlock');
-      const sens = document.getElementById('mod-sensitive');
-      const reg = document.getElementById('mod-regedit');
-      if (!aim || !sens || !reg) return;
-
-      if (mode === 'all') {
-        aim.checked = true; sens.checked = true; reg.checked = true;
-      } else if (mode === 'aimlock') {
-        aim.checked = true; sens.checked = false; reg.checked = false;
-      } else if (mode === 'sensitive') {
-        aim.checked = false; sens.checked = true; reg.checked = false;
-      } else if (mode === 'regedit') {
-        aim.checked = false; sens.checked = false; reg.checked = true;
-      } else if (mode === 'aim_reg') {
-        aim.checked = true; sens.checked = false; reg.checked = true;
-      } else if (mode === 'aim_sens') {
-        aim.checked = true; sens.checked = true; reg.checked = false;
-      }
-      updateTierPreview();
-    }
-
-    function updateTierPreview() {
-      const aim = document.getElementById('mod-aimlock')?.checked;
-      const sens = document.getElementById('mod-sensitive')?.checked;
-      const reg = document.getElementById('mod-regedit')?.checked;
-      const preview = document.getElementById('selected-tier-preview');
-      if (!preview) return;
-
-      const selected = [];
-      if (aim) selected.push('AIMLOCK');
-      if (sens) selected.push('SENSITIVE');
-      if (reg) selected.push('REGEDIT');
-
-      if (selected.length === 3) {
-        preview.innerText = 'GÓI: ALL ACCESS VIP (TRỌN BỘ)';
-        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
-      } else if (selected.length === 0) {
-        preview.innerText = 'CHƯA CHỌN CHỨC NĂNG!';
-        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30';
-      } else if (selected.length === 1) {
-        preview.innerText = 'GÓI: ' + selected[0] + ' ONLY VIP';
-        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30';
-      } else {
-        preview.innerText = 'GÓI: COMBO VIP (' + selected.join(' + ') + ')';
-        preview.className = 'text-xs font-black px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30';
-      }
-    }
-
-    async function handleCreateKey() {
-      const selectedModules = [];
-      if (document.getElementById('mod-aimlock')?.checked) selectedModules.push('aimlock');
-      if (document.getElementById('mod-sensitive')?.checked) selectedModules.push('sensitive');
-      if (document.getElementById('mod-regedit')?.checked) selectedModules.push('regedit');
-
-      if (selectedModules.length === 0) {
-        alert('Vui lòng chọn ít nhất 1 chức năng (Aimlock, Sensitive hoặc Regedit)!');
-        return;
-      }
-
-      const duration_days = parseInt(document.getElementById('create-duration').value);
-      const quantity = parseInt(document.getElementById('create-quantity').value) || 1;
-      const note = document.getElementById('create-note').value.trim();
-
-      const tier = selectedModules.length === 3 ? 'all' : selectedModules.join(',');
-      const data = await apiRequest('/admin/keys/create', 'POST', { tier, modules: selectedModules, duration_days, quantity, note });
-      if (data && data.success) {
-        alert(data.message + '\\nKey đầu tiên: ' + data.key);
-        document.getElementById('create-note').value = '';
-        loadKeys();
-        loadStats();
-      } else if (data) {
-        alert('Lỗi: ' + data.message);
-      }
-    }
-
-    async function copyToClipboard(text) {
-      await navigator.clipboard.writeText(text);
-      alert('Đã sao chép: ' + text);
+    function copyText(str) {
+      navigator.clipboard.writeText(str).then(() => alert('Đã sao chép: ' + str));
     }
 
     async function banKey(key) {
-      if (!confirm('Khóa (Ban) key: ' + key + '?')) return;
-      await apiRequest('/admin/keys/' + encodeURIComponent(key) + '/ban', 'POST');
+      if (!confirm('Khóa (Ban) mã key: ' + key + '?')) return;
+      await apiCall('/api/admin/keys/' + key + '/ban', 'POST');
       loadKeys(); loadStats();
     }
 
     async function unbanKey(key) {
-      await apiRequest('/admin/keys/' + encodeURIComponent(key) + '/unban', 'POST');
+      await apiCall('/api/admin/keys/' + key + '/unban', 'POST');
       loadKeys(); loadStats();
     }
 
     async function resetDevice(key) {
-      if (!confirm('Xóa liên kết thiết bị (Reset HWID) cho key: ' + key + '? Khách có thể đổi máy khác.')) return;
-      await apiRequest('/admin/keys/' + encodeURIComponent(key) + '/reset-device', 'POST');
+      if (!confirm('Reset HWID thiết bị cho key: ' + key + '? Người dùng sẽ có thể kích hoạt trên thiết bị mới.')) return;
+      await apiCall('/api/admin/keys/' + key + '/reset-device', 'POST');
       loadKeys();
     }
 
     async function deleteKey(key) {
-      if (!confirm('CẢNH BÁO: Xóa vĩnh viễn key: ' + key + '?')) return;
-      await apiRequest('/admin/keys/' + encodeURIComponent(key), 'DELETE');
+      if (!confirm('XÓA VĨNH VIỄN mã key này khỏi hệ thống?')) return;
+      await apiCall('/api/admin/keys/' + key, 'DELETE');
       loadKeys(); loadStats();
     }
 
-    // --- SELLER MANAGEMENT ---
+    // Sellers Logic
     async function loadSellers() {
-      const data = await apiRequest('/admin/sellers');
-      if (!data || !data.sellers) return;
+      const data = await apiCall('/api/admin/sellers');
+      const tbody = document.getElementById('sellersTableBody');
+      if (!data || !data.success) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger); padding: 20px;">Lỗi tải đại lý</td></tr>';
+        return;
+      }
+      if (!data.sellers || data.sellers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Chưa có tài khoản đại lý nào</td></tr>';
+        return;
+      }
 
-      const tbody = document.getElementById('sellers-tbody');
       tbody.innerHTML = '';
-
       data.sellers.forEach(s => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-white/[0.02] transition-colors';
+        const quotaStr = s.max_keys === 0 ? (s.used_keys + ' / Vô hạn') : (s.used_keys + ' / ' + s.max_keys);
         tr.innerHTML = \`
-          <td class="py-3 px-3 font-bold text-white">@\${s.username}</td>
-          <td class="py-3 px-3 text-gray-300">\${s.name || '-'}</td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-black \${s.role === 'admin' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-amber-500/20 text-amber-400'}">\${s.role.toUpperCase()}</span></td>
-          <td class="py-3 px-3 text-[11px] text-gray-400">\${s.allowed_tiers}</td>
-          <td class="py-3 px-3 font-bold text-cyan-400">\${s.total_keys_created || 0}</td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold \${s.status === 'active' ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}">\${s.status.toUpperCase()}</span></td>
-          <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
-            <button onclick="changeSellerPassword('\${s.username}')" title="Đổi mật khẩu" class="p-1.5 rounded bg-white/5 hover:bg-white/15 text-gray-300"><i class="fas fa-key"></i></button>
-            \${s.username !== 'admin' ? \`
-              <button onclick="toggleSellerStatus('\${s.username}')" title="Khóa/Mở khóa" class="p-1.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400"><i class="fas fa-user-slash"></i></button>
-              <button onclick="deleteSeller('\${s.username}')" title="Xóa Seller" class="p-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400"><i class="fas fa-trash"></i></button>
-            \` : ''}
+          <td>#\${s.id}</td>
+          <td style="font-weight: 700; color: #38bdf8;">\${s.username}</td>
+          <td>\${s.name || s.username}</td>
+          <td><span style="font-family: monospace; font-weight: 700;">\${quotaStr}</span></td>
+          <td style="font-size: 11px; color: var(--text-muted);">\${new Date(s.created_at).toLocaleDateString('vi-VN')}</td>
+          <td>
+            <div class="action-group">
+              <button class="btn-act btn-act-reset" onclick="updateSellerQuota(\${s.id}, \${s.max_keys})">⚡ Đổi Quota</button>
+              <button class="btn-act btn-act-del" onclick="deleteSeller(\${s.id}, '\${s.username}')">🗑️ Xóa</button>
+            </div>
           </td>
         \`;
         tbody.appendChild(tr);
       });
     }
 
-    async function handleCreateSeller() {
-      const username = document.getElementById('seller-username').value.trim();
-      const password = document.getElementById('seller-password').value.trim();
-      const name = document.getElementById('seller-name').value.trim();
-      const allowed_tiers = document.getElementById('seller-allowed-tiers').value;
+    async function createSeller() {
+      const username = document.getElementById('sellerUsername').value.trim();
+      const password = document.getElementById('sellerPassword').value.trim();
+      const name = document.getElementById('sellerName').value.trim();
+      const max_keys = parseInt(document.getElementById('sellerMaxKeys').value);
 
-      const data = await apiRequest('/admin/sellers/create', 'POST', { username, password, name, allowed_tiers });
+      if (!username || !password) return alert('Vui lòng nhập Username và Mật khẩu cho đại lý');
+
+      const data = await apiCall('/api/admin/sellers/create', 'POST', { username, password, name, max_keys });
       if (data && data.success) {
         alert(data.message);
-        document.getElementById('seller-username').value = '';
-        document.getElementById('seller-password').value = '';
-        document.getElementById('seller-name').value = '';
+        document.getElementById('sellerUsername').value = '';
+        document.getElementById('sellerPassword').value = '';
+        document.getElementById('sellerName').value = '';
         loadSellers();
       } else if (data) {
         alert('Lỗi: ' + data.message);
       }
     }
 
-    async function toggleSellerStatus(u) {
-      if (!confirm('Thay đổi trạng thái hoạt động của seller: ' + u + '?')) return;
-      await apiRequest('/admin/sellers/' + encodeURIComponent(u) + '/toggle-status', 'POST');
-      loadSellers();
+    async function updateSellerQuota(id, current) {
+      const val = prompt('Nhập hạn mức số Key tối đa cho đại lý này (0 = Không giới hạn):', current);
+      if (val === null) return;
+      const max_keys = parseInt(val);
+      if (isNaN(max_keys)) return alert('Hạn mức phải là số nguyên hợp lệ');
+      const data = await apiCall('/api/admin/sellers/' + id + '/quota', 'POST', { max_keys });
+      if (data && data.success) {
+        alert('Đã cập nhật Quota thành công!');
+        loadSellers();
+      }
     }
 
-    async function changeSellerPassword(u) {
-      const newPass = prompt('Nhập mật khẩu mới cho seller ' + u + ':');
-      if (!newPass) return;
-      await apiRequest('/admin/sellers/' + encodeURIComponent(u) + '/change-password', 'POST', { password: newPass });
-      alert('Đã cập nhật mật khẩu thành công!');
-    }
-
-    async function deleteSeller(u) {
-      if (!confirm('CẢNH BÁO: Xóa tài khoản seller: ' + u + '?')) return;
-      await apiRequest('/admin/sellers/' + encodeURIComponent(u), 'DELETE');
-      loadSellers();
+    async function deleteSeller(id, username) {
+      if (!confirm('Xóa vĩnh viễn đại lý ' + username + '?')) return;
+      const data = await apiCall('/api/admin/sellers/' + id, 'DELETE');
+      if (data && data.success) {
+        alert('Đã xóa đại lý thành công');
+        loadSellers();
+      }
     }
   </script>
 </body>
