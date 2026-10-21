@@ -10,7 +10,8 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 command -v xcodebuild >/dev/null || { echo 'xcodebuild is required on macOS' >&2; exit 127; }
 
-xcodebuild \
+echo "Starting xcodebuild archive..."
+if ! xcodebuild \
   -project "$ROOT/ThreeOneOSFive.xcodeproj" \
   -scheme 3105 \
   -configuration Release \
@@ -19,7 +20,15 @@ xcodebuild \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY='' \
-  archive
+  archive 2>&1 | tee "$BUILD_DIR/xcodebuild.log"; then
+  echo "::error title=Xcodebuild Error::Build failed, printing error details below:"
+  echo "-------------------- XCODEBUILD ERRORS --------------------"
+  grep -E -C 3 "(error:|fatal error:|\*\* ARCHIVE FAILED \*\*)" "$BUILD_DIR/xcodebuild.log" || true
+  echo "-------------------- LAST 100 LINES --------------------"
+  tail -n 100 "$BUILD_DIR/xcodebuild.log"
+  echo "--------------------------------------------------------"
+  exit 65
+fi
 
 APP="$ARCHIVE/Products/Applications/3105.app"
 test -d "$APP"
