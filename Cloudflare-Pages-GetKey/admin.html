@@ -266,9 +266,13 @@
       </div>
 
       <div id="formAdminLogin">
+        <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+          <label>Tài Khoản Master Admin</label>
+          <input type="text" id="adminUserInput" value="DucNamTweaks" placeholder="Nhập DucNamTweaks..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
         <div class="form-group" style="text-align: left; margin-bottom: 16px;">
-          <label>Mã Bí Mật (ADMIN_SECRET)</label>
-          <input type="password" id="adminSecretInput" placeholder="Nhập mã ADMIN_SECRET..." onkeyup="if(event.key==='Enter') doLogin()">
+          <label>Mật Khẩu Master Admin</label>
+          <input type="password" id="adminPassInput" placeholder="Nhập mật khẩu (18042010)..." onkeyup="if(event.key==='Enter') doLogin()">
         </div>
       </div>
 
@@ -287,7 +291,12 @@
         VÀO HỆ THỐNG QUẢN TRỊ 🚀
       </button>
       
-      <div style="margin-top: 16px;">
+      <div style="margin-top: 14px; font-size: 11px; color: var(--text-muted); text-align: center;">
+        Hỗ trợ: <a href="https://t.me/dntweaks" target="_blank" style="color: var(--primary); text-decoration: none;">Telegram @dntweaks</a> • 
+        <a href="https://zalo.me/0395109314" target="_blank" style="color: var(--primary); text-decoration: none;">Zalo 0395109314</a>
+      </div>
+
+      <div style="margin-top: 12px;">
         <a href="/" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">← Quay lại trang Nhận Key</a>
       </div>
     </div>
@@ -537,18 +546,19 @@
 
     async function doLogin() {
       if (loginMode === 'admin') {
-        const secret = document.getElementById('adminSecretInput').value.trim();
-        if (!secret) return alert('Vui lòng nhập ADMIN_SECRET');
+        const username = document.getElementById('adminUserInput').value.trim();
+        const password = document.getElementById('adminPassInput').value.trim();
+        if (!username || !password) return alert('Vui lòng nhập tài khoản và mật khẩu Admin');
         const res = await fetch(API_BASE + '/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret })
+          body: JSON.stringify({ username, password })
         });
         const data = await res.json();
         if (data && data.success) {
           saveSession(data.token, data.role, data.username);
         } else {
-          alert('Sai ADMIN_SECRET!');
+          alert(data.message || 'Sai tài khoản hoặc mật khẩu Master Admin!');
         }
       } else {
         const username = document.getElementById('sellerUserInput').value.trim();

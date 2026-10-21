@@ -101,11 +101,11 @@
         <div class="flex items-center justify-between px-2 mb-3">
             <div class="flex items-center space-x-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase">Hệ Thống Key Online</span>
+                <span class="text-[11px] font-bold text-gray-400 tracking-wider uppercase">Cổng Key Trực Tuyến</span>
             </div>
             <a href="/admin" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-cyan-400 hover:text-white flex items-center space-x-1.5 transition-all">
                 <i class="fas fa-user-shield text-[11px]"></i>
-                <span>Admin / Seller Panel</span>
+                <span>Admin / Seller</span>
             </a>
         </div>
 
@@ -125,59 +125,69 @@
                 <span>EXTERNAL V2.0 PRO VIP</span>
             </div>
             <h1 class="text-2xl font-black tracking-wide text-white">DNTWEAKS EXTERNAL IOS</h1>
-            <p class="text-xs text-gray-400 mt-1 mb-5">Cổng Cấp License Key Kích Hoạt Ứng Dụng</p>
+            <p class="text-xs text-gray-400 mt-1 mb-4">Cổng Nhận Key Trải Nghiệm & Kích Hoạt Ứng Dụng</p>
 
             <!-- ========================================== -->
             <!-- VIEW 1: CHƯA CÓ KEY (CHỌN GÓI & LẤY KEY) -->
             <!-- ========================================== -->
             <div id="view-get-key" class="space-y-4">
                 
-                <!-- Hộp chọn 4 Phân Hệ -->
+                <!-- BANNER VIP TOÀN BỘ (KHÔNG CẤP MIỄN PHÍ) -->
+                <div class="bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-cyan-500/15 border border-amber-500/35 rounded-2xl p-4 text-left shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-base">👑</span>
+                            <span class="text-xs font-black text-amber-300 uppercase tracking-wide">Gói VIP Toàn Bộ (Full 3 Phân Hệ)</span>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">TRẢ PHÍ</span>
+                    </div>
+                    <p class="text-[11px] text-gray-300 mt-1.5 leading-relaxed">
+                        Mở khóa toàn bộ <b>Aimlock + Sensitive + Regedit (V1 - V5)</b> không giới hạn. Liên hệ Admin để mua bản quyền VIP:
+                    </p>
+                    <div class="flex items-center space-x-2 mt-2.5">
+                        <a href="https://t.me/dntweaks" target="_blank" class="flex-1 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-xs font-bold text-cyan-300 flex items-center justify-center space-x-1.5 transition-all">
+                            <i class="fab fa-telegram"></i>
+                            <span>Tele: @dntweaks</span>
+                        </a>
+                        <a href="https://zalo.me/0395109314" target="_blank" class="flex-1 py-1.5 px-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/40 text-xs font-bold text-blue-300 flex items-center justify-center space-x-1.5 transition-all">
+                            <i class="fas fa-comment-dots"></i>
+                            <span>Zalo: 0395109314</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hộp chọn phân hệ dùng thử (3 phân hệ độc lập) -->
                 <div class="bg-black/40 border border-white/10 rounded-2xl p-4 text-left">
                     <div class="flex items-center justify-between mb-3">
                         <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                            Chọn phân hệ muốn trải nghiệm:
+                            Chọn 1 phân hệ dùng thử miễn phí (2 Giờ):
                         </label>
-                        <span class="text-[10px] text-cyan-400 font-bold" id="tier-hint">Mở full 3 phân hệ</span>
+                        <span class="text-[10px] text-cyan-400 font-bold" id="tier-hint">Chỉ mở Aimlock V1 - V5</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <button onclick="selectTier('all')" id="tier-btn-all" class="tier-option active p-3 rounded-xl border border-white/10 bg-white/5 text-cyan-400 font-bold flex flex-col items-start space-y-1">
-                            <div class="flex items-center space-x-1.5">
-                                <span>💎</span>
-                                <span class="font-extrabold text-[13px]">VIP Toàn Bộ</span>
-                            </div>
-                            <span class="text-[10px] text-gray-400 font-normal">Aimlock + Sens + Regedit</span>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <button onclick="selectTier('aimlock')" id="tier-btn-aimlock" class="tier-option active p-3 rounded-xl border border-white/10 bg-white/5 text-cyan-400 font-bold flex flex-col items-center text-center space-y-1">
+                            <span class="text-lg">🎯</span>
+                            <span class="font-extrabold text-[12px] truncate w-full">Aimlock VIP</span>
+                            <span class="text-[9px] text-gray-400 font-normal">Khóa tâm V1-V5</span>
                         </button>
 
-                        <button onclick="selectTier('aimlock')" id="tier-btn-aimlock" class="tier-option p-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold flex flex-col items-start space-y-1">
-                            <div class="flex items-center space-x-1.5">
-                                <span>🎯</span>
-                                <span class="font-extrabold text-[13px]">Aimlock VIP</span>
-                            </div>
-                            <span class="text-[10px] text-gray-400 font-normal">Chỉ mở Aimlock V1 - V5</span>
+                        <button onclick="selectTier('sensitive')" id="tier-btn-sensitive" class="tier-option p-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold flex flex-col items-center text-center space-y-1">
+                            <span class="text-lg">⚡</span>
+                            <span class="font-extrabold text-[12px] truncate w-full">Sensitive VIP</span>
+                            <span class="text-[9px] text-gray-400 font-normal">Độ nhạy 120Hz</span>
                         </button>
 
-                        <button onclick="selectTier('sensitive')" id="tier-btn-sensitive" class="tier-option p-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold flex flex-col items-start space-y-1">
-                            <div class="flex items-center space-x-1.5">
-                                <span>⚡</span>
-                                <span class="font-extrabold text-[13px]">Sensitive VIP</span>
-                            </div>
-                            <span class="text-[10px] text-gray-400 font-normal">Chỉ mở Sensitive V1 - V5</span>
-                        </button>
-
-                        <button onclick="selectTier('regedit')" id="tier-btn-regedit" class="tier-option p-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold flex flex-col items-start space-y-1">
-                            <div class="flex items-center space-x-1.5">
-                                <span>⚙️</span>
-                                <span class="font-extrabold text-[13px]">Regedit VIP</span>
-                            </div>
-                            <span class="text-[10px] text-gray-400 font-normal">Chỉ mở Regedit V1 - V5</span>
+                        <button onclick="selectTier('regedit')" id="tier-btn-regedit" class="tier-option p-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-bold flex flex-col items-center text-center space-y-1">
+                            <span class="text-lg">⚙️</span>
+                            <span class="font-extrabold text-[12px] truncate w-full">Regedit VIP</span>
+                            <span class="text-[9px] text-gray-400 font-normal">Kernel V1-V5</span>
                         </button>
                     </div>
 
                     <div class="mt-3 p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-[11px] text-cyan-300 flex items-start space-x-2">
                         <i class="fas fa-info-circle mt-0.5 text-cyan-400"></i>
-                        <span>Trên iOS App, các phân hệ không thuộc gói cấp phép sẽ tự động bị <b>khóa và làm mờ bảo mật</b>.</span>
+                        <span>Key dùng thử chỉ mở đúng 1 phân hệ bạn chọn. Hai phân hệ còn lại sẽ tự động <b>bị khóa và làm mờ</b> trên app.</span>
                     </div>
                 </div>
 
@@ -186,7 +196,7 @@
                     <div class="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
                         <i class="fas fa-shield-alt text-cyan-400 text-sm mb-1 block"></i>
                         <span class="text-[11px] font-bold text-gray-200 block">Anti-Ban</span>
-                        <span class="text-[9px] text-gray-500 block">Bảo vệ tài khoản</span>
+                        <span class="text-[9px] text-gray-500 block">An toàn 100%</span>
                     </div>
                     <div class="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
                         <i class="fas fa-bolt text-amber-400 text-sm mb-1 block"></i>
@@ -200,24 +210,17 @@
                     </div>
                 </div>
 
-                <!-- Tùy chọn hình thức lấy key -->
-                <div class="flex items-center justify-between text-xs px-2 text-gray-400">
-                    <span>Hình thức:</span>
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="bypass-link4m" class="w-4 h-4 accent-cyan-400 rounded">
-                        <span class="text-cyan-400 font-semibold">Lấy trực tiếp (Không qua Link4M)</span>
-                    </label>
+                <!-- Thông báo bắt buộc vượt Link4M -->
+                <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center space-x-2 text-left">
+                    <i class="fas fa-shield-alt text-amber-400"></i>
+                    <span>Bắt buộc vượt link 4M ngắn (khoảng 15 giây) để nhận mã key kích hoạt miễn phí.</span>
                 </div>
 
                 <!-- Nút Lấy Key Chính -->
                 <button onclick="handleGetKey()" id="btn-get-key" class="w-full py-4 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-black font-black text-sm tracking-wider uppercase shadow-xl shadow-cyan-500/25 hover:opacity-95 active:scale-98 transition-all flex items-center justify-center space-x-2 cursor-pointer">
                     <i class="fas fa-key text-base"></i>
-                    <span>LẤY KEY MIỄN PHÍ NGAY 🚀</span>
+                    <span>VƯỢT LINK4M LẤY KEY NGAY 🚀</span>
                 </button>
-
-                <p class="text-[11px] text-gray-500 leading-relaxed">
-                    Mã bản quyền tự động tạo trên Cloudflare D1 Server và khóa theo HWID thiết bị khi kích hoạt.
-                </p>
             </div>
 
             <!-- ========================================== -->
@@ -227,7 +230,7 @@
                 
                 <div class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold inline-flex items-center space-x-1.5">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>ĐÃ TẠO KEY THÀNH CÔNG!</span>
+                    <span>ĐÃ VƯỢT LINK THÀNH CÔNG!</span>
                 </div>
 
                 <!-- Hộp Hiển Thị Key Nổi Bật -->
@@ -236,7 +239,7 @@
                     
                     <div class="flex items-center justify-between bg-white/[0.05] p-3.5 rounded-xl border border-white/10 mt-1">
                         <span id="display-key" class="mono text-base md:text-lg font-black text-cyan-300 tracking-wider select-all break-all text-left">
-                            DNT-ALL-XXXX-YYYY-ZZZZ
+                            DNT-AIM-XXXX-YYYY-ZZZZ
                         </span>
                         <button onclick="copyKey()" id="btn-copy" class="ml-2 px-3.5 py-2.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black font-extrabold text-xs flex items-center space-x-1.5 transition-all shadow-md">
                             <i class="fas fa-copy"></i>
@@ -245,7 +248,7 @@
                     </div>
 
                     <div class="flex items-center justify-between mt-3 text-xs pt-2 border-t border-white/10">
-                        <span class="text-gray-400">Gói phân hệ: <b id="display-tier-label" class="text-cyan-400 font-bold">VIP ALL</b></span>
+                        <span class="text-gray-400">Gói phân hệ: <b id="display-tier-label" class="text-cyan-400 font-bold">AIMLOCK VIP</b></span>
                         <span class="text-gray-400">Thời hạn: <b class="text-emerald-400 font-bold">2 Giờ Trải Nghiệm</b></span>
                     </div>
                 </div>
@@ -265,14 +268,14 @@
                     </div>
                     <div class="flex items-start space-x-2 text-gray-300">
                         <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">3</span>
-                        <span>Dán key vào ô nhập bản quyền và nhấn <b>Kích Hoạt</b>. Các mục không được cấp sẽ tự động làm mờ và khóa bảo vệ.</span>
+                        <span>Dán key vào ô nhập bản quyền và nhấn <b>Kích Hoạt</b>. Chỉ phân hệ bạn chọn sẽ được mở khóa, 2 phân hệ còn lại sẽ tự động làm mờ và khóa bảo vệ.</span>
                     </div>
                 </div>
 
                 <!-- Nút thao tác phụ -->
                 <div class="flex space-x-2">
                     <button onclick="resetGetKeyView()" class="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/10 transition-colors">
-                        ← Lấy Gói Khác Hoặc Đổi Phân Hệ
+                        ← Chọn Phân Hệ Khác
                     </button>
                     <a href="/admin" class="py-3 px-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs font-bold text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center space-x-1">
                         <i class="fas fa-lock text-[11px]"></i>
@@ -285,17 +288,17 @@
             <div class="mt-6 pt-4 border-t border-white/5 text-[10px] text-gray-500 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
                     <span>© 2026 DNTWEAKS EXTERNAL</span>
-                    <a href="/admin" class="text-cyan-400 hover:underline">Quản Trị Viên (Admin Portal)</a>
+                    <a href="/admin" class="text-cyan-400 hover:underline">Quản Trị Viên (Admin)</a>
                 </div>
-                <div class="flex justify-center space-x-4 text-gray-400 pt-1">
-                    <a href="https://t.me/ddnstore" target="_blank" class="hover:text-cyan-400 flex items-center space-x-1">
-                        <i class="fab fa-telegram"></i>
-                        <span>Hỗ trợ Telegram</span>
+                <div class="flex justify-center space-x-4 text-gray-300 pt-1 text-xs">
+                    <a href="https://t.me/dntweaks" target="_blank" class="hover:text-cyan-400 flex items-center space-x-1">
+                        <i class="fab fa-telegram text-cyan-400"></i>
+                        <span>Tele: <b>@dntweaks</b></span>
                     </a>
                     <span>•</span>
-                    <a href="https://zalo.me" target="_blank" class="hover:text-cyan-400 flex items-center space-x-1">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>Mua Key VIP Dài Hạn</span>
+                    <a href="https://zalo.me/0395109314" target="_blank" class="hover:text-cyan-400 flex items-center space-x-1">
+                        <i class="fas fa-comment-dots text-blue-400"></i>
+                        <span>Zalo: <b>0395109314</b></span>
                     </a>
                 </div>
             </div>
@@ -307,20 +310,20 @@
     <!-- Loading Spinner Overlay -->
     <div id="loading-overlay" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center hidden">
         <div class="w-14 h-14 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-sm text-cyan-300 font-extrabold mt-4 tracking-wider uppercase">Đang Khởi Tạo Key Bản Quyền...</p>
-        <p class="text-xs text-gray-400 mt-1">Đồng bộ cơ sở dữ liệu Cloudflare D1</p>
+        <p class="text-sm text-cyan-300 font-extrabold mt-4 tracking-wider uppercase">Đang Tạo Key & Chuẩn Bị Link4M...</p>
+        <p class="text-xs text-gray-400 mt-1">Đồng bộ Cloudflare D1 Server</p>
     </div>
 
     <script>
         const API_BASE = "https://dntweaks-key-server.ddnstore.workers.dev";
         const LINK4M_TOKEN = "6a2a8037954dcc5cae0cc8e8";
 
-        let selectedTier = "all";
+        let selectedTier = "aimlock"; // Mặc định chỉ chọn 1 phân hệ dùng thử
 
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const keyParam = urlParams.get('key');
-            const tierParam = urlParams.get('tier') || 'all';
+            const tierParam = urlParams.get('tier') || 'aimlock';
 
             if (keyParam) {
                 showKeyResult(keyParam, tierParam);
@@ -330,9 +333,8 @@
 
         function selectTier(tier) {
             selectedTier = tier;
-            const tiers = ['all', 'aimlock', 'sensitive', 'regedit'];
+            const tiers = ['aimlock', 'sensitive', 'regedit'];
             const hints = {
-                all: "Mở full 3 phân hệ Aim + Sens + Regedit",
                 aimlock: "Chỉ mở Aimlock V1 - V5",
                 sensitive: "Chỉ mở Sensitive V1 - V5",
                 regedit: "Chỉ mở Regedit V1 - V5"
@@ -340,13 +342,15 @@
 
             tiers.forEach(t => {
                 const btn = document.getElementById('tier-btn-' + t);
-                btn.classList.toggle('active', t === tier);
-                if (t === tier) {
-                    btn.classList.add('text-cyan-400');
-                    btn.classList.remove('text-gray-300');
-                } else {
-                    btn.classList.remove('text-cyan-400');
-                    btn.classList.add('text-gray-300');
+                if (btn) {
+                    btn.classList.toggle('active', t === tier);
+                    if (t === tier) {
+                        btn.classList.add('text-cyan-400');
+                        btn.classList.remove('text-gray-300');
+                    } else {
+                        btn.classList.remove('text-cyan-400');
+                        btn.classList.add('text-gray-300');
+                    }
                 }
             });
 
@@ -356,8 +360,6 @@
         async function handleGetKey() {
             const loader = document.getElementById('loading-overlay');
             loader.classList.remove('hidden');
-
-            const isDirect = document.getElementById('bypass-link4m').checked;
 
             try {
                 const res = await fetch(API_BASE + '/api/generate-free-key', {
@@ -371,15 +373,7 @@
                     const currentOrigin = window.location.origin + window.location.pathname;
                     const destinationUrl = currentOrigin + '?key=' + encodeURIComponent(data.key) + '&tier=' + encodeURIComponent(selectedTier);
 
-                    // Nếu người dùng chọn lấy trực tiếp hoặc local test
-                    if (isDirect || window.location.protocol === 'file:') {
-                        loader.classList.add('hidden');
-                        showKeyResult(data.key, selectedTier);
-                        window.history.replaceState({}, document.title, window.location.pathname + '?key=' + data.key);
-                        return;
-                    }
-
-                    // Chuyển hướng qua Link4M rút gọn
+                    // Bắt buộc chuyển hướng qua Link4M rút gọn
                     const link4mUrl = `https://link4m.co/st?api=${LINK4M_TOKEN}&url=${encodeURIComponent(destinationUrl)}`;
                     window.location.href = link4mUrl;
                 } else {
@@ -398,12 +392,11 @@
             document.getElementById('display-key').innerText = key;
 
             const tierNames = {
-                all: "VIP ALL (Trọn Bộ 3 Phân Hệ)",
                 aimlock: "AIMLOCK VIP (V1-V5)",
                 sensitive: "SENSITIVE VIP (V1-V5)",
                 regedit: "REGEDIT VIP (V1-V5)"
             };
-            document.getElementById('display-tier-label').innerText = tierNames[tier] || "VIP ALL";
+            document.getElementById('display-tier-label').innerText = tierNames[tier] || "AIMLOCK VIP";
         }
 
         async function copyKey() {

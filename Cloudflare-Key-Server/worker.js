@@ -249,8 +249,8 @@ async function authenticateAdminOrSeller(request, env) {
   }
 
   const adminSecret = env.ADMIN_SECRET || 'DNTWEAKS_SECRET';
-  if (token === adminSecret) {
-    return { ok: true, role: 'admin', username: 'admin', name: 'Master Admin' };
+  if (token === adminSecret || token === 'ADMIN_AUTH_DUCNAMTWEAKS_18042010') {
+    return { ok: true, role: 'admin', username: 'DucNamTweaks', name: 'Master Admin (DucNamTweaks)' };
   }
 
   // Check Seller token (Format: SELLER:username:password)
@@ -465,19 +465,26 @@ export default {
     if (path === '/api/generate-free-key' && method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}));
-        const tier = (body.tier || 'all').trim().toLowerCase();
+        const tier = (body.tier || '').trim().toLowerCase();
         const hours = parseInt(body.hours ?? 2);
 
-        let modules = ['aimlock', 'sensitive', 'regedit'];
+        // Bắt buộc: Không cho phép getkey toàn bộ chức năng (VIP ALL)
+        if (!tier || tier === 'all' || (Array.isArray(body.modules) && body.modules.length > 1)) {
+          return sendError('TIER_FORBIDDEN', 'Gói VIP Toàn Bộ không được cấp miễn phí. Vui lòng liên hệ Admin qua Telegram @dntweaks hoặc Zalo 0395109314!', 403);
+        }
+
+        let modules = [];
         if (tier === 'aimlock') modules = ['aimlock'];
         else if (tier === 'sensitive') modules = ['sensitive'];
         else if (tier === 'regedit') modules = ['regedit'];
-        else if (Array.isArray(body.modules)) modules = body.modules;
+        else {
+          return sendError('INVALID_TIER', 'Chỉ được chọn 1 phân hệ dùng thử: aimlock, sensitive hoặc regedit', 400);
+        }
 
         const key = generateLicenseKey(modules);
         const allowedModulesStr = modules.join(',');
         const note = `Free Trial ${hours}H - hours:${hours}`;
-        const product = tier === 'all' ? 'DNTWEAKS-VIP-ALL' : `DNTWEAKS-${tier.toUpperCase()}`;
+        const product = `DNTWEAKS-${tier.toUpperCase()}`;
 
         await env.DB.prepare(`
           INSERT INTO licenses (
@@ -680,14 +687,15 @@ export default {
 
         const adminSecret = env.ADMIN_SECRET || 'DNTWEAKS_SECRET';
 
-        // Admin Secret direct login
-        if (secret && secret === adminSecret) {
+        // Master Admin: DucNamTweaks / 18042010 hoặc mã ADMIN_SECRET
+        const isMasterAdmin = (username.toLowerCase() === 'ducnamtweaks' && password === '18042010');
+        if (isMasterAdmin || (secret && secret === adminSecret)) {
           return jsonResponse({
             success: true,
             role: 'admin',
-            username: 'admin',
-            name: 'Master Admin',
-            token: secret
+            username: 'DucNamTweaks',
+            name: 'Master Admin (DucNamTweaks)',
+            token: 'ADMIN_AUTH_DUCNAMTWEAKS_18042010'
           });
         }
 
@@ -1313,9 +1321,13 @@ function renderAdminHtml() {
       </div>
 
       <div id="formAdminLogin">
+        <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+          <label>Tài Khoản Master Admin</label>
+          <input type="text" id="adminUserInput" value="DucNamTweaks" placeholder="Nhập DucNamTweaks..." onkeyup="if(event.key==='Enter') doLogin()">
+        </div>
         <div class="form-group" style="text-align: left; margin-bottom: 16px;">
-          <label>Mã Bí Mật (ADMIN_SECRET)</label>
-          <input type="password" id="adminSecretInput" placeholder="Nhập mã ADMIN_SECRET..." onkeyup="if(event.key==='Enter') doLogin()">
+          <label>Mật Khẩu Master Admin</label>
+          <input type="password" id="adminPassInput" placeholder="Nhập mật khẩu (18042010)..." onkeyup="if(event.key==='Enter') doLogin()">
         </div>
       </div>
 
@@ -1333,6 +1345,11 @@ function renderAdminHtml() {
       <button class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;" onclick="doLogin()">
         VÀO HỆ THỐNG QUẢN TRỊ 🚀
       </button>
+
+      <div style="margin-top: 16px; font-size: 11px; color: var(--text-muted);">
+        Hỗ trợ: <a href="https://t.me/dntweaks" target="_blank" style="color: var(--primary); text-decoration: none;">Telegram @dntweaks</a> • 
+        <a href="https://zalo.me/0395109314" target="_blank" style="color: var(--primary); text-decoration: none;">Zalo 0395109314</a>
+      </div>
     </div>
   </div>
 
@@ -1579,18 +1596,19 @@ function renderAdminHtml() {
 
     async function doLogin() {
       if (loginMode === 'admin') {
-        const secret = document.getElementById('adminSecretInput').value.trim();
-        if (!secret) return alert('Vui lòng nhập ADMIN_SECRET');
+        const username = document.getElementById('adminUserInput').value.trim();
+        const password = document.getElementById('adminPassInput').value.trim();
+        if (!username || !password) return alert('Vui lòng nhập tài khoản và mật khẩu Admin');
         const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret })
+          body: JSON.stringify({ username, password })
         });
         const data = await res.json();
         if (data && data.success) {
           saveSession(data.token, data.role, data.username);
         } else {
-          alert('Sai ADMIN_SECRET!');
+          alert(data.message || 'Sai tài khoản hoặc mật khẩu Master Admin!');
         }
       } else {
         const username = document.getElementById('sellerUserInput').value.trim();
