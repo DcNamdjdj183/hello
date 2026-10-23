@@ -483,7 +483,160 @@ final class RegeditManager: ObservableObject {
             let active = isEnabled(presetId: preset.id, for: bundleId)
             applyExternalToContainer(preset: preset, isEnabled: active, bundleId: bundleId)
         }
+        syncAdvancedToContainer(bundleId: bundleId)
         return (true, "Đã đồng bộ thành công cấu hình EXTERNAL IOS (Aimlock, Sensitive & Regedit) vào Container của ứng dụng!")
+    }
+
+    // MARK: - Advanced Aimlock & IOHID Touch Booster Settings
+    func targetBone(for bundleId: String? = nil) -> String {
+        let key = "EXTERNAL_IOS_TargetBone_" + (bundleId ?? "global")
+        return defaults.string(forKey: key) ?? "head"
+    }
+
+    func setTargetBone(_ bone: String, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_TargetBone_" + (bundleId ?? "global")
+        defaults.set(bone, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+        objectWillChange.send()
+    }
+
+    func smoothFactor(for bundleId: String? = nil) -> Double {
+        let key = "EXTERNAL_IOS_SmoothFactor_" + (bundleId ?? "global")
+        let val = defaults.double(forKey: key)
+        return val > 0 ? val : 75.0
+    }
+
+    func setSmoothFactor(_ val: Double, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_SmoothFactor_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        objectWillChange.send()
+    }
+
+    func fovRadius(for bundleId: String? = nil) -> Double {
+        let key = "EXTERNAL_IOS_FovRadius_" + (bundleId ?? "global")
+        let val = defaults.double(forKey: key)
+        return val > 0 ? val : 90.0
+    }
+
+    func setFovRadius(_ val: Double, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_FovRadius_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        objectWillChange.send()
+    }
+
+    func isBezierEnabled(for bundleId: String? = nil) -> Bool {
+        let key = "EXTERNAL_IOS_BezierEnabled_" + (bundleId ?? "global")
+        if defaults.object(forKey: key) == nil { return true }
+        return defaults.bool(forKey: key)
+    }
+
+    func setBezierEnabled(_ val: Bool, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_BezierEnabled_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        let feedback = UIImpactFeedbackGenerator(style: .light)
+        feedback.impactOccurred()
+        objectWillChange.send()
+    }
+
+    // IOHID Touch Booster
+    func touchPollingRate(for bundleId: String? = nil) -> Int {
+        let key = "EXTERNAL_IOS_TouchPollingRate_" + (bundleId ?? "global")
+        let val = defaults.integer(forKey: key)
+        return val > 0 ? val : 240
+    }
+
+    func setTouchPollingRate(_ val: Int, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_TouchPollingRate_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+        objectWillChange.send()
+    }
+
+    func isAntiMicroShakeEnabled(for bundleId: String? = nil) -> Bool {
+        let key = "EXTERNAL_IOS_AntiMicroShake_" + (bundleId ?? "global")
+        if defaults.object(forKey: key) == nil { return true }
+        return defaults.bool(forKey: key)
+    }
+
+    func setAntiMicroShake(_ val: Bool, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_AntiMicroShake_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        let feedback = UIImpactFeedbackGenerator(style: .light)
+        feedback.impactOccurred()
+        objectWillChange.send()
+    }
+
+    func isGestureBufferFlushEnabled(for bundleId: String? = nil) -> Bool {
+        let key = "EXTERNAL_IOS_GestureBufferFlush_" + (bundleId ?? "global")
+        if defaults.object(forKey: key) == nil { return true }
+        return defaults.bool(forKey: key)
+    }
+
+    func setGestureBufferFlush(_ val: Bool, for bundleId: String? = nil) {
+        let key = "EXTERNAL_IOS_GestureBufferFlush_" + (bundleId ?? "global")
+        defaults.set(val, forKey: key)
+        syncAdvancedToContainer(bundleId: bundleId)
+        let feedback = UIImpactFeedbackGenerator(style: .light)
+        feedback.impactOccurred()
+        objectWillChange.send()
+    }
+
+    func syncAdvancedToContainer(bundleId: String?) {
+        let targets = bundleId != nil ? [bundleId!] : defaultAppTargets.map { $0.bundleId }
+        for bid in targets {
+            guard let containerPath = ContainerStore.resolveAppContainerPath(bundleID: bid) else { continue }
+            let docsPath = (containerPath as NSString).appendingPathComponent("Documents")
+            let prefsPath = ((containerPath as NSString).appendingPathComponent("Library") as NSString).appendingPathComponent("Preferences")
+
+            let externalConfigFile = (docsPath as NSString).appendingPathComponent("DNTWEAKS_ExternalIOS.plist")
+            let legacyConfigFile = (docsPath as NSString).appendingPathComponent("DNTWEAKS_Regedit.plist")
+            let tweakPrefsFile = (prefsPath as NSString).appendingPathComponent("\(bid).external.plist")
+
+            var configDict: [String: Any] = (NSDictionary(contentsOfFile: externalConfigFile) as? [String: Any]) ?? [:]
+
+            let bone = targetBone(for: bid)
+            let smooth = smoothFactor(for: bid)
+            let fov = fovRadius(for: bid)
+            let bezier = isBezierEnabled(for: bid)
+
+            configDict["AIMLOCK_ADVANCED_CONFIG"] = [
+                "target_bone": bone,
+                "bone_hitbox": bone == "head" ? "Hitbox_Bone_Head_100%" : (bone == "neck" ? "Neck_Bone_Hitbox_85%" : "Chest_Bone_Hitbox_65%"),
+                "smooth_factor": smooth,
+                "smooth_interpolation": bezier ? "Cubic_Bezier_EaseOut" : "Linear_Tracking",
+                "fov_radius_deg": fov,
+                "bezier_enabled": bezier,
+                "humanized_aim_curve": true
+            ]
+
+            let rate = touchPollingRate(for: bid)
+            let antiShake = isAntiMicroShakeEnabled(for: bid)
+            let flush = isGestureBufferFlushEnabled(for: bid)
+
+            configDict["IOHID_TOUCH_BOOSTER"] = [
+                "polling_rate_hz": rate,
+                "anti_micro_shake": antiShake,
+                "gesture_buffer_flush": flush,
+                "sampling_mode": rate == 240 ? "Ultra_Quantum_240Hz" : "ProMotion_120Hz",
+                "touch_latency": rate == 240 ? "0.001ms" : "0.005ms",
+                "micro_shake_filter_strength": antiShake ? 0.95 : 0.0,
+                "engine": "IOHIDEvent_TouchBoost_v2.0"
+            ]
+
+            configDict["LAST_MODIFIED"] = Date().timeIntervalSince1970
+            let nsDict = NSDictionary(dictionary: configDict)
+            nsDict.write(toFile: externalConfigFile, atomically: true)
+            nsDict.write(toFile: legacyConfigFile, atomically: true)
+            nsDict.write(toFile: tweakPrefsFile, atomically: true)
+        }
     }
 
     // MARK: - Internal Tweak Injector via ContainerStore

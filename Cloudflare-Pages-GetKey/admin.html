@@ -357,30 +357,31 @@
         </div>
 
         <!-- Bộ Chọn Phân Hệ (Modules Checkboxes) -->
+        <!-- Bộ Chọn Phân Hệ (Modules Checkboxes) -->
         <div class="modules-picker">
-          <label style="color: #fff; font-size: 13px;">Tùy chọn phân hệ được phép kích hoạt trong Key:</label>
+          <label style="color: #fff; font-size: 13px; font-weight: 700;">Tùy chọn phân hệ được phép kích hoạt trong Key (Phân quyền):</label>
           <div class="checkbox-row">
             <label class="checkbox-btn">
               <input type="checkbox" id="modAimlock" checked>
-              <span>🎯 Aimlock VIP (V1 - V5)</span>
+              <span>🎯 Aimlock Suite (V1-V5 • Bone Selector • Smooth Curve • FOV Circle)</span>
             </label>
             <label class="checkbox-btn">
               <input type="checkbox" id="modSensitive" checked>
-              <span>⚡ Sensitive VIP (V1 - V5)</span>
+              <span>⚡ Sensitive Suite (V1-V5 • Anti-Shake • Tối ưu kéo tâm)</span>
             </label>
             <label class="checkbox-btn">
               <input type="checkbox" id="modRegedit" checked>
-              <span>⚙️ Regedit VIP (V1 - V5)</span>
+              <span>⚙️ Regedit Suite (V1-V5 • IOHID 240Hz Booster • Khử Micro-shake)</span>
             </label>
           </div>
           <div class="quick-combos">
             <span style="font-size: 12px; color: var(--text-muted); align-self: center;">Chọn nhanh:</span>
-            <button class="combo-btn" onclick="selectCombos('all')">VIP ALL (Trọn Bộ)</button>
-            <button class="combo-btn" onclick="selectCombos('aim')">Chỉ Aimlock</button>
-            <button class="combo-btn" onclick="selectCombos('sens')">Chỉ Sensitive</button>
-            <button class="combo-btn" onclick="selectCombos('reg')">Chỉ Regedit</button>
-            <button class="combo-btn" onclick="selectCombos('aim_reg')">Aim + Reg</button>
-            <button class="combo-btn" onclick="selectCombos('aim_sens')">Aim + Sens</button>
+            <button class="combo-btn" onclick="selectCombos('all')">👑 VIP ALL (Trọn Bộ 100%)</button>
+            <button class="combo-btn" onclick="selectCombos('aim')">🎯 Chỉ Aimlock (Bone + Smooth FOV)</button>
+            <button class="combo-btn" onclick="selectCombos('sens')">⚡ Chỉ Sensitive (Độ Nhạy)</button>
+            <button class="combo-btn" onclick="selectCombos('reg')">⚙️ Chỉ Regedit (IOHID 240Hz)</button>
+            <button class="combo-btn" onclick="selectCombos('aim_reg')">🎯+⚙️ Aimlock + Regedit</button>
+            <button class="combo-btn" onclick="selectCombos('aim_sens')">🎯+⚡ Aimlock + Sensitive</button>
           </div>
         </div>
 
@@ -735,9 +736,13 @@
 
         let modBadges = '';
         const mods = k.allowed_modules_list || [];
-        if (mods.includes('aimlock')) modBadges += '<span class="mod-tag mod-aim">AIM</span>';
-        if (mods.includes('sensitive')) modBadges += '<span class="mod-tag mod-sens">SENS</span>';
-        if (mods.includes('regedit')) modBadges += '<span class="mod-tag mod-reg">REG</span>';
+        if (mods.length === 3 || mods.includes('all')) {
+          modBadges = '<span class="mod-tag" style="background:rgba(234,179,8,0.2);color:#eab308;border:1px solid rgba(234,179,8,0.4);" title="Full Aimlock + Bone Selector + Smooth/FOV + Sensitive + Regedit IOHID 240Hz">👑 VIP ALL</span>';
+        } else {
+          if (mods.includes('aimlock')) modBadges += '<span class="mod-tag mod-aim" title="Aimlock V1-V5 • Bone Selector (Đầu/Cổ/Ngực) • Smooth Bezier Curve & FOV Circle">🎯 AIMLOCK</span> ';
+          if (mods.includes('sensitive')) modBadges += '<span class="mod-tag mod-sens" title="Sensitive V1-V5 • Anti-Shake • Gia tốc kéo tâm">⚡ SENSITIVE</span> ';
+          if (mods.includes('regedit')) modBadges += '<span class="mod-tag mod-reg" title="Regedit V1-V5 • IOHID Touch Polling Booster 240Hz • Zero Delay">⚙️ REGEDIT</span>';
+        }
         if (!modBadges) modBadges = '<span class="mod-tag" style="background:#334155;color:#94a3b8;">' + (k.product || 'ALL') + '</span>';
 
         let durText = k.duration_days === -1 ? 'Vĩnh viễn' : (k.duration_days + ' Ngày');

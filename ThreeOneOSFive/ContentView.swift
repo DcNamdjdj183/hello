@@ -1796,6 +1796,7 @@ struct ExternalIOSDashboardView: View {
             // Cards List
             VStack(spacing: 14) {
                 if selectedSubTab == .aimlock {
+                    AimlockAdvancedSuiteCard(bundleId: selectedGameBundleId)
                     ForEach(allAimlockPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
                     }
@@ -1804,6 +1805,7 @@ struct ExternalIOSDashboardView: View {
                         ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
                     }
                 } else {
+                    IOHIDTouchBoosterCard(bundleId: selectedGameBundleId)
                     ForEach(allRegeditSubPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: selectedGameBundleId)
                     }
@@ -1888,7 +1890,447 @@ struct HUDMetricItem: View {
     }
 }
 
-// MARK: - External Preset Card (Aimlock & Sensitive & Regedit)
+// MARK: - Aimlock Advanced Suite Card (Bone Selector, Smooth Aim Curve, FOV Circle)
+struct AimlockAdvancedSuiteCard: View {
+    let bundleId: String?
+    @EnvironmentObject private var licenseManager: LicenseManager
+    @ObservedObject private var manager = RegeditManager.shared
+
+    @State private var currentBone: String = "head"
+    @State private var smoothVal: Double = 75.0
+    @State private var fovVal: Double = 90.0
+    @State private var bezierOn: Bool = true
+
+    private var isPermitted: Bool {
+        licenseManager.canAccess(category: .aimlock)
+    }
+
+    var body: some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(LinearGradient(colors: [Color.cyan.opacity(0.3), Color.blue.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "scope")
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundColor(.cyan)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("BỘ ĐIỀU KHIỂN TÂM NÂNG CAO")
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundColor(.white)
+                            Text("PRO")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.cyan)
+                                .cornerRadius(4)
+                        }
+                        Text("Bone Selector • Smooth Curve • FOV Circle")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.cyan.opacity(0.8))
+                    }
+                    Spacer()
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 1. BONE SELECTOR (Vùng Khóa Mục Tiêu)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "person.fill.viewfinder")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.cyan)
+                        Text("BONE SELECTOR (VÙNG ƯU TIÊN KHÓA)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text(currentBone == "head" ? "ĐẦU (100% HS)" : (currentBone == "neck" ? "CỔ (ỔN ĐỊNH)" : "NGỰC (BÁM DÍNH)"))
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(currentBone == "head" ? .red : (currentBone == "neck" ? .orange : .cyan))
+                    }
+
+                    HStack(spacing: 8) {
+                        boneButton(id: "head", title: "🎯 ĐẦU (HEAD)", subtitle: "Hitbox 100%", color: .red)
+                        boneButton(id: "neck", title: "⚡ CỔ (NECK)", subtitle: "Snap Nhẹ", color: .orange)
+                        boneButton(id: "chest", title: "🛡️ NGỰC (CHEST)", subtitle: "Sấy Tầm Gần", color: .cyan)
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 2. SMOOTH AIM CURVE (NỘI SUY BEZIER CURVE)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "waveform.path")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.green)
+                        Text("SMOOTH AIM CURVE (NỘI SUY BEZIER)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("\(Int(smoothVal))% MƯỢT")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundColor(.green)
+                    }
+
+                    Text("Kéo lướt mượt vào hitbox theo đường cong Bezier, chống giật tâm bất thường và né report ban tay.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+
+                    HStack(spacing: 12) {
+                        Slider(value: $smoothVal, in: 1...100, step: 1) { _ in
+                            manager.setSmoothFactor(smoothVal, for: bundleId)
+                        }
+                        .accentColor(.green)
+
+                        Toggle("", isOn: $bezierOn)
+                            .labelsHidden()
+                            .toggleStyle(SwitchToggleStyle(tint: .green))
+                            .scaleEffect(0.8)
+                            .onChange(of: bezierOn) { val in
+                                manager.setBezierEnabled(val, for: bundleId)
+                            }
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 3. FOV RADIUS CIRCLE (VÒNG TRÒN GÓC QUÉT)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "circle.circle")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.yellow)
+                        Text("FOV CIRCLE (VÒNG TRÒN GÓC QUÉT)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("\(Int(fovVal))° FOV")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundColor(.yellow)
+                    }
+
+                    Text("Giới hạn góc quét nhận diện mục tiêu quanh tâm súng. Mục tiêu ngoài vòng FOV sẽ không bị kéo lệch tâm.")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+
+                    Slider(value: $fovVal, in: 30...180, step: 5) { _ in
+                        manager.setFovRadius(fovVal, for: bundleId)
+                    }
+                    .accentColor(.yellow)
+                }
+            }
+            .padding(16)
+            .background(Color(red: 0.07, green: 0.09, blue: 0.14))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.cyan.opacity(0.5), Color.blue.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+
+            // Locked Overlay if no Aimlock access
+            if !isPermitted {
+                Color.black.opacity(0.85)
+                    .cornerRadius(16)
+                VStack(spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.red)
+                    Text("CHỨC NĂNG BỊ KHÓA")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundColor(.white)
+                    Text("Gói Key hiện tại không có quyền Aimlock Suite.\nVui lòng kích hoạt Key AIMLOCK hoặc ALL ACCESS VIP.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+            }
+        }
+        .onAppear {
+            currentBone = manager.targetBone(for: bundleId)
+            smoothVal = manager.smoothFactor(for: bundleId)
+            fovVal = manager.fovRadius(for: bundleId)
+            bezierOn = manager.isBezierEnabled(for: bundleId)
+        }
+    }
+
+    private func boneButton(id: String, title: String, subtitle: String, color: Color) -> some View {
+        Button(action: {
+            currentBone = id
+            manager.setTargetBone(id, for: bundleId)
+        }) {
+            VStack(spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundColor(currentBone == id ? .black : .white)
+                Text(subtitle)
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(currentBone == id ? .black.opacity(0.8) : color)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                Group {
+                    if currentBone == id {
+                        color
+                    } else {
+                        Color.white.opacity(0.04)
+                    }
+                }
+            )
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(currentBone == id ? color : Color.white.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - IOHID Touch Polling Booster Card (Giảm trễ cảm ứng & Khử Micro-shake)
+struct IOHIDTouchBoosterCard: View {
+    let bundleId: String?
+    @EnvironmentObject private var licenseManager: LicenseManager
+    @ObservedObject private var manager = RegeditManager.shared
+
+    @State private var pollingRate: Int = 240
+    @State private var antiMicroShake: Bool = true
+    @State private var gestureFlush: Bool = true
+
+    private var isPermitted: Bool {
+        licenseManager.canAccess(category: .regedit)
+    }
+
+    var body: some View {
+        ZStack {
+            VStack(alignment: .leading, spacing: 14) {
+                // Header
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(LinearGradient(colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "bolt.badge.clock.fill")
+                            .font(.system(size: 18, weight: .black))
+                            .foregroundColor(.yellow)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("IOHID TOUCH POLLING BOOSTER")
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundColor(.white)
+                            Text("240Hz")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Color.yellow)
+                                .cornerRadius(4)
+                        }
+                        Text("Giảm trễ cảm ứng • Khử rung giật Micro-Shake")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.yellow.opacity(0.85))
+                    }
+                    Spacer()
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 1. TOUCH POLLING RATE (TẦN SỐ LẤY MẪU CẢM ỨNG)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "speedometer")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.yellow)
+                        Text("TẦN SỐ QUÉT ĐIỂM CHẠM CẢM ỨNG")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text(pollingRate == 240 ? "240Hz (ULTRA BOOST)" : "120Hz (PROMOTION)")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(pollingRate == 240 ? .yellow : .cyan)
+                    }
+
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            pollingRate = 120
+                            manager.setTouchPollingRate(120, for: bundleId)
+                        }) {
+                            VStack(spacing: 2) {
+                                Text("120Hz STANDARD")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(pollingRate == 120 ? .black : .white)
+                                Text("Chuẩn ProMotion (0.005ms)")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(pollingRate == 120 ? .black.opacity(0.8) : .gray)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(pollingRate == 120 ? Color.cyan : Color.white.opacity(0.04))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(pollingRate == 120 ? Color.cyan : Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: {
+                            pollingRate = 240
+                            manager.setTouchPollingRate(240, for: bundleId)
+                        }) {
+                            VStack(spacing: 2) {
+                                Text("🔥 240Hz QUANTUM BOOST")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(pollingRate == 240 ? .black : .white)
+                                Text("Zero Latency (0.001ms)")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(pollingRate == 240 ? .black.opacity(0.8) : .yellow)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(pollingRate == 240 ? Color.yellow : Color.white.opacity(0.04))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(pollingRate == 240 ? Color.yellow : Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 2. KHỬ RUNG GIẬT MICRO-SHAKE
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text("Khử Rung Giật Micro-Shake")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("LỌC NHIỄU")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundColor(.green)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.green.opacity(0.2))
+                                .cornerRadius(3)
+                        }
+                        Text("Lọc bỏ rung lắc micro-tremor khi đặt ngón tay, giữ tâm dính chặt hitbox.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $antiMicroShake)
+                        .labelsHidden()
+                        .toggleStyle(SwitchToggleStyle(tint: .yellow))
+                        .scaleEffect(0.85)
+                        .onChange(of: antiMicroShake) { val in
+                            manager.setAntiMicroShake(val, for: bundleId)
+                        }
+                }
+
+                Divider().background(Color.white.opacity(0.08))
+
+                // 3. CAN THIỆP BUFFER CỬ CHỈ (GESTURE BUFFER FLUSH)
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text("Can Thiệp Buffer Cử Chỉ")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("ZERO DELAY")
+                                .font(.system(size: 8, weight: .black))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.orange.opacity(0.2))
+                                .cornerRadius(3)
+                        }
+                        Text("Xóa hàng đợi buffer cảm ứng iOS, phản hồi thao tác kéo tâm tức thì.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $gestureFlush)
+                        .labelsHidden()
+                        .toggleStyle(SwitchToggleStyle(tint: .yellow))
+                        .scaleEffect(0.85)
+                        .onChange(of: gestureFlush) { val in
+                            manager.setGestureBufferFlush(val, for: bundleId)
+                        }
+                }
+
+                // Driver Status Badge
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    Text("IOHIDEvent System: ACTIVE • \(pollingRate)Hz Sampling • Zero Micro-Shake")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(Color.green.opacity(0.9))
+                }
+                .padding(.top, 2)
+            }
+            .padding(16)
+            .background(Color(red: 0.08, green: 0.08, blue: 0.12))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.yellow.opacity(0.5), Color.orange.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+
+            // Locked Overlay if no Regedit access
+            if !isPermitted {
+                Color.black.opacity(0.85)
+                    .cornerRadius(16)
+                VStack(spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.yellow)
+                    Text("CHỨC NĂNG BỊ KHÓA")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundColor(.white)
+                    Text("Gói Key hiện tại không có quyền Regedit Suite.\nVui lòng kích hoạt Key REGEDIT hoặc ALL ACCESS VIP.")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+            }
+        }
+        .onAppear {
+            pollingRate = manager.touchPollingRate(for: bundleId)
+            antiMicroShake = manager.isAntiMicroShakeEnabled(for: bundleId)
+            gestureFlush = manager.isGestureBufferFlushEnabled(for: bundleId)
+        }
+    }
+}
 struct ExternalPresetCard: View {
     let preset: ExternalPreset
     let bundleId: String?
@@ -2302,6 +2744,7 @@ struct ExternalIOSGameSectionView: View {
             // Preset Cards List
             VStack(spacing: 14) {
                 if selectedSubTab == .aimlock {
+                    AimlockAdvancedSuiteCard(bundleId: app.bundleId)
                     ForEach(allAimlockPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: app.bundleId)
                     }
@@ -2310,6 +2753,7 @@ struct ExternalIOSGameSectionView: View {
                         ExternalPresetCard(preset: preset, bundleId: app.bundleId)
                     }
                 } else {
+                    IOHIDTouchBoosterCard(bundleId: app.bundleId)
                     ForEach(allRegeditSubPresets) { preset in
                         ExternalPresetCard(preset: preset, bundleId: app.bundleId)
                     }
